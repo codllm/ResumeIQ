@@ -36,7 +36,6 @@ export const interviewReportSchema = z.object({
 
 export type InterviewReport = z.infer<typeof interviewReportSchema>;
 
-// Helper function to get GoogleGenAI client instance
 function getAIClient() {
   const apiKey = process.env.GOOGLE_GENAI_API_KEY;
   if (!apiKey) {
@@ -45,8 +44,12 @@ function getAIClient() {
   return new GoogleGenAI({ apiKey });
 }
 
+// List of fallback models to cycle through if rate limited
+const MODELS_TO_TRY = ["Gemini 3 Flash Preview"];
+
 /**
  * Generates an interview report using Gemini AI given job description, resume, and self description.
+ * Automatically tries fallback models if quota limit (429) is encountered.
  */
 export async function generateInterviewReport(
   jobDesc: string = dummyJobDescription,
@@ -63,22 +66,36 @@ export async function generateInterviewReport(
 
   const jsonSchema = zodToJsonSchema(interviewReportSchema as any);
 
-  try {
-    const response = await ai.models.generateContent({
-      model: "gemini 3.6flash",
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: jsonSchema as any,
-      },
-    });
+  let lastError: any = null;
 
-    const text = response.text || "{}";
-    return JSON.parse(text) as InterviewReport;
-  } catch (error: any) {
-    console.error("Gemini AI API Error:", error.message || error);
-    throw error;
+  for (const modelName of MODELS_TO_TRY) {
+    try {
+      const response = await ai.models.generateContent({
+        model: modelName,
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: jsonSchema as any,
+        },
+      });
+
+      const text = response.text || "{}";
+      return JSON.parse(text) as InterviewReport;
+    } catch (error: any) {
+      lastError = error;
+      const isQuotaError = error.status === 429 || (error.message && error.message.includes("429"));
+      if (isQuotaError) {
+        console.warn(`[Gemini AI] Quota limit reached for model '${modelName}'. Trying fallback model...`);
+        continue;
+      }
+      throw error;
+    }
   }
+
+  console.error("Gemini AI API Error: All model attempts exhausted due to rate limits/quota.");
+  throw new Error(
+    "Gemini API Quota Exceeded (429). Please update GOOGLE_GENAI_API_KEY in .env with a fresh key from https://aistudio.google.com/app/apikey"
+  );
 }
 
 /**
