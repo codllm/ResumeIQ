@@ -1,7 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
-import { resume as dummyResume, selfDescription as dummySelfDescription, jobDescription as dummyJobDescription } from "../../dummy";
 
 export const interviewReportSchema = z.object({
   technicalQuestions: z.array(
@@ -44,17 +42,63 @@ function getAIClient() {
   return new GoogleGenAI({ apiKey });
 }
 
-// List of fallback models to cycle through if rate limited
-const MODELS_TO_TRY = ["Gemini 3 Flash Preview"];
+/**
+ * Defensively normalizes the matchScore field returned by the AI model.
+ * Handles cases where the model returns a percentage string (e.g. "82%"),
+ * a fraction-like string (e.g. "8.5/10"), a 0-100 scale number, or a clean
+ * 0-10 number. Falls back to 0 if the value is totally unparseable.
+ */
+function normalizeMatchScore(raw: unknown): number {
+  if (typeof raw === "number" && !isNaN(raw)) {
+    return Math.min(10, Math.max(0, raw));
+  }
+
+  if (typeof raw === "string") {
+    // Strip anything that isn't a digit or a dot, e.g. "82%" -> "82", "8.5/10" -> "8.5"
+    const cleaned = raw.replace(/[^0-9.]/g, "");
+    const parsed = parseFloat(cleaned);
+    if (!isNaN(parsed)) {
+      // If the model gave a 0-100 style percentage, scale it down to 0-10
+      const scaled = parsed > 10 ? parsed / 10 : parsed;
+      return Math.min(10, Math.max(0, scaled));
+    }
+  }
+
+  return 0;
+}
+
+/**
+ * Validates and coerces the raw parsed JSON into a shape safe to persist,
+ * regardless of minor formatting deviations from the model.
+ */
+function sanitizeInterviewReport(raw: any): InterviewReport {
+  const report: InterviewReport = {
+    technicalQuestions: Array.isArray(raw?.technicalQuestions) ? raw.technicalQuestions : [],
+    behavioralQuestions: Array.isArray(raw?.behavioralQuestions) ? raw.behavioralQuestions : [],
+    skillGaps: Array.isArray(raw?.skillGaps) ? raw.skillGaps : [],
+    preparationPlan: Array.isArray(raw?.preparationPlan) ? raw.preparationPlan : [],
+    matchScore: normalizeMatchScore(raw?.matchScore),
+  };
+
+  const emptyFields = (Object.keys(report) as (keyof InterviewReport)[]).filter(
+    (key) => Array.isArray(report[key]) && (report[key] as any[]).length === 0
+  );
+  if (emptyFields.length > 0) {
+    console.warn(
+      `Gemini response deviated from the expected schema — empty fields: ${emptyFields.join(", ")}. Raw keys received: ${Object.keys(raw || {}).join(", ")}`
+    );
+  }
+
+  return report;
+}
 
 /**
  * Generates an interview report using Gemini AI given job description, resume, and self description.
- * Automatically tries fallback models if quota limit (429) is encountered.
  */
 export async function generateInterviewReport(
-  jobDesc: string = dummyJobDescription,
-  resumeText: string = dummyResume,
-  selfDesc: string = dummySelfDescription
+  jobDesc: string,
+  resumeText: string,
+  selfDesc: string
 ): Promise<InterviewReport> {
   const ai = getAIClient();
 
@@ -62,50 +106,76 @@ export async function generateInterviewReport(
     jobDescription: jobDesc,
     resumeText,
     selfDescription: selfDesc,
-  })}`;
+  })}
 
-  const jsonSchema = zodToJsonSchema(interviewReportSchema as any);
+You must respond with a JSON object containing EXACTLY these top-level keys, and no others: "technicalQuestions", "behavioralQuestions", "skillGaps", "preparationPlan", "matchScore".
 
-  let lastError: any = null;
+Do NOT use any other key names (no "candidateName", "summary", "skillsAnalysis", "missingSkills", "interviewQuestions", "recommendation", etc.). Follow this exact shape:
 
-  for (const modelName of MODELS_TO_TRY) {
-    try {
-      const response = await ai.models.generateContent({
-        model: modelName,
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: jsonSchema as any,
-        },
-      });
-
-      const text = response.text || "{}";
-      return JSON.parse(text) as InterviewReport;
-    } catch (error: any) {
-      lastError = error;
-      const isQuotaError = error.status === 429 || (error.message && error.message.includes("429"));
-      if (isQuotaError) {
-        console.warn(`[Gemini AI] Quota limit reached for model '${modelName}'. Trying fallback model...`);
-        continue;
-      }
-      throw error;
-    }
-  }
-
-  console.error("Gemini AI API Error: All model attempts exhausted due to rate limits/quota.");
-  throw new Error(
-    "Gemini API Quota Exceeded (429). Please update GOOGLE_GENAI_API_KEY in .env with a fresh key from https://aistudio.google.com/app/apikey"
-  );
+{
+  "technicalQuestions": [
+    { "question": "string", "answer": "string", "intention": "string" }
+  ],
+  "behavioralQuestions": [
+    { "question": "string", "answer": "string", "intention": "string" }
+  ],
+  "skillGaps": [
+    { "skill": "string", "severity": "string" }
+  ],
+  "preparationPlan": [
+    { "day": 1, "focus": "string", "tasks": ["string", "string"] }
+  ],
+  "matchScore": 7.8
 }
 
-/**
- * Legacy wrapper using dummy data
- */
-export async function invokeGeminiai(): Promise<InterviewReport | null> {
+Rules:
+- "technicalQuestions" and "behavioralQuestions": include at least 4 items each, based on the resume and job description.
+- "skillGaps": include every required/preferred skill from the job description that is missing or weak in the resume.
+- "preparationPlan": a multi-day study plan (at least 3 days), each with a focus area and a list of concrete tasks.
+- "matchScore" must be a plain number between 0 and 10 (e.g. 8.2) — not a string, not a percentage, no "%" sign or units.
+- Output ONLY the JSON object. No markdown, no code fences, no commentary, no extra keys.`;
+
+  // Zod v4 has native JSON Schema conversion built in. The separate
+  // `zod-to-json-schema` package (v3.x) is built for Zod v3's internal
+  // structure and silently produces an empty/broken schema against Zod v4 —
+  // that was the root cause of the model improvising its own field names
+  // and returning plain strings instead of objects.
+  const jsonSchema = z.toJSONSchema(interviewReportSchema);
+
   try {
-    return await generateInterviewReport();
-  } catch (err: any) {
-    console.error("Failed to generate AI interview report on startup:", err.message || err);
-    return null;
+    const response = await ai.models.generateContent({
+      model: "gemini-3.5-flash",
+      contents: prompt,
+      config: {
+        // The installed @google/genai SDK does not expose `responseFormat`.
+        // Use responseMimeType + responseJsonSchema instead, which accepts
+        // standard JSON Schema directly (unlike the older `responseSchema`
+        // field, which expects an OpenAPI-subset Schema object and is the
+        // field that was silently ignoring our zod-to-json-schema output).
+        responseMimeType: "application/json",
+        responseJsonSchema: jsonSchema,
+      },
+    });
+
+    const text = response.text || "{}";
+
+    // Temporary debug log — remove once you've confirmed the fields populate.
+    console.log("Raw Gemini response text:", text);
+
+    const parsed = JSON.parse(text);
+    return sanitizeInterviewReport(parsed);
+  } catch (error: any) {
+    const isQuotaError = error.status === 429 || (error.message && error.message.includes("429"));
+    if (isQuotaError) {
+      console.warn(
+        "Gemini AI API Quota Exceeded (429). Please update GOOGLE_GENAI_API_KEY in .env with a fresh key from https://aistudio.google.com/app/apikey"
+      );
+      throw new Error(
+        "Gemini API Quota Exceeded (429). Please update GOOGLE_GENAI_API_KEY in .env with a fresh key from https://aistudio.google.com/app/apikey"
+      );
+    }
+
+    console.error("Gemini AI API Error:", error.message || error);
+    throw error;
   }
 }
