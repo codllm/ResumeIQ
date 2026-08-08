@@ -10,11 +10,13 @@ export interface IInterviewReport extends Document {
     question: string;
     answer: string;
     intention: string;
+    tags:string
   }>;
   behavioralQuestions: Array<{
     question: string;
     answer: string;
     intention: string;
+    tags:string
   }>;
   skillGaps: Array<{
     skill: string;
@@ -59,6 +61,7 @@ const interviewReportSchema = new Schema<IInterviewReport>(
         question: { type: String, required: true },
         answer: { type: String, required: true },
         intention: { type: String, required: true },
+        tags:{type:String,require:true}
       },
     ],
     behavioralQuestions: [
@@ -66,6 +69,7 @@ const interviewReportSchema = new Schema<IInterviewReport>(
         question: { type: String, required: true },
         answer: { type: String, required: true },
         intention: { type: String, required: true },
+        tags:{type:String,require:true}
       },
     ],
     skillGaps: [

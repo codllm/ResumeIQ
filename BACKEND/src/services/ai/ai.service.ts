@@ -1,5 +1,9 @@
 import { GoogleGenAI } from "@google/genai";
-import { z } from "zod";
+import { success, z } from "zod";
+import { resume } from "../../dummy";
+import { model } from "mongoose";
+
+
 
 export const interviewReportSchema = z.object({
   technicalQuestions: z.array(
@@ -7,6 +11,7 @@ export const interviewReportSchema = z.object({
       question: z.string().describe("The technical question asked during the interview."),
       answer: z.string().describe("The candidate's answer to the technical question."),
       intention: z.string().describe("The intention behind the technical question, explaining what the interviewer is trying to assess."),
+      tags: z.string().describe("Tags or topic names where the question belongs.")
     })
   ),
   behavioralQuestions: z.array(
@@ -14,6 +19,7 @@ export const interviewReportSchema = z.object({
       question: z.string().describe("The behavioral question asked during the interview."),
       answer: z.string().describe("The candidate's answer to the behavioral question."),
       intention: z.string().describe("The intention behind the behavioral question, explaining what the interviewer is trying to assess."),
+      tags: z.string().describe("Tags or topic names where the question belongs.")
     })
   ),
   skillGaps: z.array(
@@ -34,6 +40,36 @@ export const interviewReportSchema = z.object({
 
 export type InterviewReport = z.infer<typeof interviewReportSchema>;
 
+export const mcqQuestionSchema = z.object({
+  questions: z.array(
+    z.object({
+      question: z.string().describe("The multiple-choice question."),
+      options: z
+        .array(z.string())
+        .length(4)
+        .describe("Exactly four possible answer options."),
+      correctAnswer: z
+        .string()
+        .describe("The correct answer. It must exactly match one of the four options."),
+      difficulty: z
+        .enum(["easy", "medium", "hard"])
+        .describe("The difficulty level of the question."),
+      topic: z
+        .string()
+        .describe("The technical topic or skill being tested."),
+      explanation: z
+        .string()
+        .describe("A short explanation of why the correct answer is correct."),
+    })
+  ),
+});
+
+export type MCQQuestion = z.infer<typeof mcqQuestionSchema>;
+
+// ==========================================
+// HELPERS
+// ==========================================
+
 function getAIClient() {
   const apiKey = process.env.GOOGLE_GENAI_API_KEY;
   if (!apiKey) {
@@ -42,23 +78,15 @@ function getAIClient() {
   return new GoogleGenAI({ apiKey });
 }
 
-/**
- * Defensively normalizes the matchScore field returned by the AI model.
- * Handles cases where the model returns a percentage string (e.g. "82%"),
- * a fraction-like string (e.g. "8.5/10"), a 0-100 scale number, or a clean
- * 0-10 number. Falls back to 0 if the value is totally unparseable.
- */
 function normalizeMatchScore(raw: unknown): number {
   if (typeof raw === "number" && !isNaN(raw)) {
     return Math.min(10, Math.max(0, raw));
   }
 
   if (typeof raw === "string") {
-    // Strip anything that isn't a digit or a dot, e.g. "82%" -> "82", "8.5/10" -> "8.5"
     const cleaned = raw.replace(/[^0-9.]/g, "");
     const parsed = parseFloat(cleaned);
     if (!isNaN(parsed)) {
-      // If the model gave a 0-100 style percentage, scale it down to 0-10
       const scaled = parsed > 10 ? parsed / 10 : parsed;
       return Math.min(10, Math.max(0, scaled));
     }
@@ -67,10 +95,6 @@ function normalizeMatchScore(raw: unknown): number {
   return 0;
 }
 
-/**
- * Validates and coerces the raw parsed JSON into a shape safe to persist,
- * regardless of minor formatting deviations from the model.
- */
 function sanitizeInterviewReport(raw: any): InterviewReport {
   const report: InterviewReport = {
     technicalQuestions: Array.isArray(raw?.technicalQuestions) ? raw.technicalQuestions : [],
@@ -85,12 +109,16 @@ function sanitizeInterviewReport(raw: any): InterviewReport {
   );
   if (emptyFields.length > 0) {
     console.warn(
-      `Gemini response deviated from the expected schema — empty fields: ${emptyFields.join(", ")}. Raw keys received: ${Object.keys(raw || {}).join(", ")}`
+      `Gemini response deviated from expected schema — empty fields: ${emptyFields.join(", ")}`
     );
   }
 
   return report;
 }
+
+// ==========================================
+// AI GENERATION FUNCTIONS
+// ==========================================
 
 /**
  * Generates an interview report using Gemini AI given job description, resume, and self description.
@@ -110,14 +138,14 @@ export async function generateInterviewReport(
 
 You must respond with a JSON object containing EXACTLY these top-level keys, and no others: "technicalQuestions", "behavioralQuestions", "skillGaps", "preparationPlan", "matchScore".
 
-Do NOT use any other key names (no "candidateName", "summary", "skillsAnalysis", "missingSkills", "interviewQuestions", "recommendation", etc.). Follow this exact shape:
+Follow this exact shape:
 
 {
   "technicalQuestions": [
-    { "question": "string", "answer": "string", "intention": "string" }
+    { "question": "string", "answer": "string", "intention": "string", "tags": "string" }
   ],
   "behavioralQuestions": [
-    { "question": "string", "answer": "string", "intention": "string" }
+    { "question": "string", "answer": "string", "intention": "string", "tags": "string" }
   ],
   "skillGaps": [
     { "skill": "string", "severity": "string" }
@@ -133,49 +161,146 @@ Rules:
 - "skillGaps": include every required/preferred skill from the job description that is missing or weak in the resume.
 - "preparationPlan": a multi-day study plan (at least 3 days), each with a focus area and a list of concrete tasks.
 - "matchScore" must be a plain number between 0 and 10 (e.g. 8.2) — not a string, not a percentage, no "%" sign or units.
-- Output ONLY the JSON object. No markdown, no code fences, no commentary, no extra keys.`;
+- Output ONLY the JSON object matching the JSON schema.`;
 
-  // Zod v4 has native JSON Schema conversion built in. The separate
-  // `zod-to-json-schema` package (v3.x) is built for Zod v3's internal
-  // structure and silently produces an empty/broken schema against Zod v4 —
-  // that was the root cause of the model improvising its own field names
-  // and returning plain strings instead of objects.
   const jsonSchema = z.toJSONSchema(interviewReportSchema);
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
+      model: "gemini-2.5-flash",
       contents: prompt,
       config: {
-        // The installed @google/genai SDK does not expose `responseFormat`.
-        // Use responseMimeType + responseJsonSchema instead, which accepts
-        // standard JSON Schema directly (unlike the older `responseSchema`
-        // field, which expects an OpenAPI-subset Schema object and is the
-        // field that was silently ignoring our zod-to-json-schema output).
         responseMimeType: "application/json",
         responseJsonSchema: jsonSchema,
       },
     });
 
     const text = response.text || "{}";
-
-    // Temporary debug log — remove once you've confirmed the fields populate.
-    console.log("Raw Gemini response text:", text);
-
     const parsed = JSON.parse(text);
     return sanitizeInterviewReport(parsed);
   } catch (error: any) {
     const isQuotaError = error.status === 429 || (error.message && error.message.includes("429"));
     if (isQuotaError) {
-      console.warn(
-        "Gemini AI API Quota Exceeded (429). Please update GOOGLE_GENAI_API_KEY in .env with a fresh key from https://aistudio.google.com/app/apikey"
-      );
-      throw new Error(
-        "Gemini API Quota Exceeded (429). Please update GOOGLE_GENAI_API_KEY in .env with a fresh key from https://aistudio.google.com/app/apikey"
-      );
+      console.warn("Gemini API Quota Exceeded (429).");
+      throw new Error("Gemini API Quota Exceeded (429). Please update GOOGLE_GENAI_API_KEY in .env");
     }
 
     console.error("Gemini AI API Error:", error.message || error);
     throw error;
   }
 }
+
+/**
+ * Generates multiple-choice mock questions tailored to the resume and job description.
+ */
+export const generatemockquestion = async (
+  resumeText: string,
+  jobDescription: string,
+  totalquestion: number
+): Promise<MCQQuestion> => {
+  const prompt = `
+Generate exactly ${totalquestion} multiple-choice questions based on the candidate's resume and the given job description.
+
+RESUME:
+${resumeText}
+
+JOB DESCRIPTION:
+${jobDescription}
+
+Requirements:
+1. Generate exactly ${totalquestion} questions.
+2. Each question must have exactly 4 answer options.
+3. Only ONE option must be correct.
+4. The "correctAnswer" string must EXACTLY match one of the four entries in the "options" array.
+5. Questions must directly evaluate skills and requirements present in the candidate's resume and target job.
+6. Target difficulty distribution:
+   - ~40% Easy
+   - ~40% Medium
+   - ~20% Hard
+7. Avoid duplicate or highly similar questions.
+8. Test real practical knowledge and problem-solving scenarios rather than basic rote memorization.
+9. Provide a concise explanation for why the chosen correct answer is correct.
+10. Explicitly state the topic or skill being tested for each question.
+`;
+
+  const ai = getAIClient();
+  const jsonSchema = z.toJSONSchema(mcqQuestionSchema);
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseJsonSchema: jsonSchema,
+      },
+    });
+
+    const text = response.text || "{}";
+    const parsed = JSON.parse(text);
+
+    // Strict validation using Zod schema
+    return mcqQuestionSchema.parse(parsed);
+
+  } catch (error: any) {
+    const isQuotaError =
+      error.status === 429 || (error.message && error.message.includes("429"));
+
+    if (isQuotaError) {
+      console.warn("Gemini API quota exceeded (429).");
+      throw new Error("Gemini API Quota Exceeded. Please check your API key or limits.");
+    }
+
+    console.error("Gemini MCQ generation error:", error.message || error);
+    throw error;
+  }
+};
+
+export const generateTextquestion = async (
+  resumeText: string,
+  jobDescription: string
+): Promise<string> => {
+  const ai = getAIClient();
+
+  const prompt = `
+You are an expert technical interviewer conducting a realistic mock interview.
+
+Generate ONE interview question for the candidate based on their resume and the job description.
+
+Candidate Resume:
+${resumeText}
+
+Job Description:
+${jobDescription}
+
+Requirements:
+- Ask only ONE question.
+- The question must be highly relevant to the candidate's resume or target job.
+- Prefer deep questions about projects, technologies, architecture, technical decisions, trade-offs, or implementation.
+- The question should feel like something a real interviewer would ask.
+- Use a natural conversational tone.
+- Do not provide an answer.
+- Do not provide explanations.
+- Do not provide multiple questions.
+- Return ONLY the question as plain text.
+`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: prompt,
+    });
+
+    const question = response.text?.trim();
+
+    if (!question) {
+      throw new Error("Gemini did not generate an interview question");
+    }
+
+    return question;
+
+  } catch (err) {
+    console.error("Error generating interview question:", err);
+    throw err;
+  }
+};
