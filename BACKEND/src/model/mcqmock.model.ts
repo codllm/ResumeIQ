@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document } from "mongoose";
+import { number } from "zod";
 
 export interface IMcqMockQuestion extends Document {
   interviewReport: mongoose.Types.ObjectId;
@@ -7,6 +8,7 @@ export interface IMcqMockQuestion extends Document {
   correctAnswer: string;
   topic: string;
   explanation: string;
+  score:number;
   difficulty: "easy" | "medium" | "hard";
 }
 
@@ -42,6 +44,9 @@ const mcqMockQuestionSchema = new Schema<IMcqMockQuestion>(
       enum: ["easy", "medium", "hard"],
       required: true,
     },
+    score:{
+      type:Number
+    }
   },
   {
     timestamps: true,

@@ -7,6 +7,12 @@ export interface IMockInterview extends Document {
   topic?: string;
   feedback?: string;
   technicalCorrectness?: string;
+
+  audio?: {
+    data: Buffer;
+    mimeType: string;
+  };
+
   user: mongoose.Types.ObjectId;
   interviewReport: mongoose.Types.ObjectId;
 }
@@ -17,33 +23,50 @@ const mockInterviewSchema = new Schema<IMockInterview>(
       type: String,
       required: true,
     },
+
     answer: {
       type: String,
       trim: true,
     },
+
     score: {
       type: Number,
       min: 0,
       max: 10,
     },
+
     topic: {
       type: String,
       trim: true,
     },
+
     feedback: {
       type: String,
       trim: true,
     },
+
     technicalCorrectness: {
       type: String,
       trim: true,
     },
+
+    audio: {
+      data: {
+        type: Buffer,
+      },
+      mimeType: {
+        type: String,
+        default: "audio/wav",
+      },
+    },
+
     user: {
       type: Schema.Types.ObjectId,
       ref: "User",
       required: true,
       index: true,
     },
+
     interviewReport: {
       type: Schema.Types.ObjectId,
       ref: "InterviewReport",

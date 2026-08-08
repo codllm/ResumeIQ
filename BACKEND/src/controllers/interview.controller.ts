@@ -13,6 +13,8 @@ import {
   generate_text_audio,
 } from "../services/ai/generateaudio.service";
 import MOCKInterview from "../model/mockInterview.model";
+import { success } from "zod";
+
 
 const pdfParseModule = require("pdf-parse");
 
@@ -131,6 +133,10 @@ export const InterviewController = async (req: Request, res: Response): Promise<
   }
 };
 
+
+
+
+
 export const mocktestController = async (
   req: Request,
   res: Response
@@ -218,6 +224,9 @@ export const mocktestController = async (
   }
 };
 
+
+
+
 export const mockInterviewController = async (
   req: Request,
   res: Response
@@ -243,6 +252,7 @@ export const mockInterviewController = async (
       return;
     }
 
+    // Find the report belonging to this user
     const report = await findUserReport(reportId, userId);
 
     if (!report) {
@@ -254,6 +264,18 @@ export const mockInterviewController = async (
     }
 
     const { resumeText, jobDescription } = report;
+
+    if (!resumeText || !jobDescription) {
+      res.status(400).json({
+        success: false,
+        message: "Resume or job description is missing",
+      });
+      return;
+    }
+
+    // --------------------------------
+    // 1. Generate interview question
+    // --------------------------------
 
     const text_form_q = await generateTextquestion(
       resumeText,
@@ -268,35 +290,59 @@ export const mockInterviewController = async (
       return;
     }
 
+    // --------------------------------
+    // 2. Convert question → audio
+    // --------------------------------
+
     const text_audio = await generate_text_audio(text_form_q);
 
     if (!text_audio) {
       res.status(502).json({
         success: false,
-        message: "Failed to generate question-audio",
+        message: "Failed to generate question audio",
       });
       return;
     }
 
+    // --------------------------------
+    // 3. Save question + audio
+    // --------------------------------
+
     const mockInterview = await MOCKInterview.create({
       question: text_form_q,
+
       user: userId,
+
       interviewReport: reportId,
+
+      audio: {
+        data: text_audio.buffer,
+        mimeType: text_audio.mimeType,
+      },
     });
+
+    // --------------------------------
+    // 4. Return only URL, NOT Base64
+    // --------------------------------
 
     res.status(201).json({
       success: true,
+
       message: "Mock interview question generated successfully",
+
       data: {
         mockInterviewId: mockInterview._id,
+
         reportId,
+
         text: text_form_q,
-        audio: text_audio.buffer.toString("base64"),
-        audioMimeType: text_audio.mimeType,
+
+        audioUrl: `/api/ai/mock-interview/audio/${mockInterview._id}`,
       },
     });
 
   } catch (error: any) {
+
     console.error("Mock Interview Error:", error);
 
     res.status(500).json({
@@ -442,6 +488,119 @@ export const mockInterviewAnswerController = async (
       success: false,
       message: "Failed to process interview answer",
       error: error.message || error,
+    });
+  }
+}
+
+export const submitmocktestcontroller = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const { mocktestId, mocktestsheet } = req.body;
+
+    if (!mocktestId) {
+      res.status(400).json({
+        success: false,
+        message: "Required details missing: mocktestId",
+      });
+      return;
+    }
+
+    if (
+      !mocktestsheet ||
+      !Array.isArray(mocktestsheet.questions)
+    ) {
+      res.status(400).json({
+        success: false,
+        message: "mocktestsheet.questions must be an array",
+      });
+      return;
+    }
+
+    let mocktestscore = 0;
+
+    for (const q of mocktestsheet.questions) {
+      const question = await MCQMockQuestion.findById(q.questionId);
+
+      if (!question) {
+        continue;
+      }
+
+      if (question.correctAnswer === q.chosenAnswer) {
+        mocktestscore++;
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      mocktestscore,
+      totalQuestions: mocktestsheet.questions.length,
+    });
+    return;
+
+  } catch (error: any) {
+    console.error("Submit mock test error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to submit mock test",
+    });
+    return;
+  }
+};
+
+
+export const mockInterviewAudioController = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const { mockInterviewId } = req.params;
+
+    if (!mockInterviewId) {
+      res.status(400).json({
+        success: false,
+        message: "Mock interview ID is required",
+      });
+      return;
+    }
+
+    const mockInterview = await MOCKInterview.findById(
+      mockInterviewId
+    );
+
+    if (!mockInterview) {
+      res.status(404).json({
+        success: false,
+        message: "Mock interview not found",
+      });
+      return;
+    }
+
+    if (!mockInterview.audio?.data) {
+      res.status(404).json({
+        success: false,
+        message: "Audio not found",
+      });
+      return;
+    }
+
+    res.set({
+      "Content-Type": mockInterview.audio.mimeType || "audio/wav",
+      "Content-Length": mockInterview.audio.data.length.toString(),
+      "Content-Disposition": "inline",
+    });
+
+    res.send(mockInterview.audio.data);
+
+  } catch (error: any) {
+    console.error("Audio error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to get audio",
+      error: error.message,
     });
   }
 };
