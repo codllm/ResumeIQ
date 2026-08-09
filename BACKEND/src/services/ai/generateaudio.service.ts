@@ -1,4 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
+import { AI_CONFIG } from "../../config/ai.config";
 
 
 
@@ -28,7 +29,7 @@ export const generate_text_audio = async (
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3.1-flash-tts-preview",
+      model: AI_CONFIG.TTS_MODEL,
 
       contents: [
         {
@@ -107,7 +108,7 @@ export const generate_audio_text = async (
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3.6-flash",
+      model: AI_CONFIG.DEFAULT_MODEL,
 
       contents: [
         {
@@ -183,7 +184,7 @@ Return ONLY valid JSON in this format:
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3.6-flash",
+      model: AI_CONFIG.DEFAULT_MODEL,
       contents: prompt,
       config: {
         responseMimeType: "application/json",

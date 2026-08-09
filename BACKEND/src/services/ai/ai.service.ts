@@ -2,6 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 import { success, z } from "zod";
 import { resume } from "../../dummy";
 import { model } from "mongoose";
+import { AI_CONFIG } from "../../config/ai.config";
 
 
 
@@ -40,31 +41,39 @@ export const interviewReportSchema = z.object({
 
 export type InterviewReport = z.infer<typeof interviewReportSchema>;
 
-export const mcqQuestionSchema = z.object({
-  questions: z.array(
+export const sectionMCQQuestionSchema = z.object({
+  sections: z.array(
     z.object({
-      question: z.string().describe("The multiple-choice question."),
-      options: z
-        .array(z.string())
-        .length(4)
-        .describe("Exactly four possible answer options."),
-      correctAnswer: z
-        .string()
-        .describe("The correct answer. It must exactly match one of the four options."),
-      difficulty: z
-        .enum(["easy", "medium", "hard"])
-        .describe("The difficulty level of the question."),
-      topic: z
-        .string()
-        .describe("The technical topic or skill being tested."),
-      explanation: z
-        .string()
-        .describe("A short explanation of why the correct answer is correct."),
+      category: z.string().describe("The section category matching the assessment pattern."),
+      questions: z.array(
+        z.object({
+          question: z.string().describe("The multiple-choice question."),
+          options: z
+            .array(z.string())
+            .length(4)
+            .describe("Exactly four possible answer options."),
+          correctAnswer: z
+            .string()
+            .describe("The correct answer. It must exactly match one of the four options."),
+          topic: z
+            .string()
+            .describe("The technical topic or skill being tested."),
+          explanation: z
+            .string()
+            .describe("A short explanation of why the correct answer is correct."),
+          score: z.number().default(1).describe("Score value for the question."),
+          difficulty: z
+            .enum(["easy", "medium", "hard"])
+            .describe("The difficulty level of the question."),
+        })
+      ).min(1),
     })
-  ),
+  ).min(1),
 });
 
-export type MCQQuestion = z.infer<typeof mcqQuestionSchema>;
+export type SectionMCQQuestions = z.infer<typeof sectionMCQQuestionSchema>;
+export type MCQQuestion = SectionMCQQuestions;
+export const mcqQuestionSchema = sectionMCQQuestionSchema;
 
 // ==========================================
 // HELPERS
@@ -167,7 +176,7 @@ Rules:
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3.6-flash",
+      model: AI_CONFIG.DEFAULT_MODEL,
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -196,39 +205,49 @@ Rules:
 export const generatemockquestion = async (
   resumeText: string,
   jobDescription: string,
-  totalquestion: number
-): Promise<MCQQuestion> => {
-  const prompt = `
-Generate exactly ${totalquestion} multiple-choice questions based on the candidate's resume and the given job description.
+  mocktestpattern: AssessmentPattern
+): Promise<SectionMCQQuestions> => {
+  const ai = getAIClient();
 
-RESUME:
+  const prompt = `
+You are an expert recruitment assessment question generator.
+
+Your task is to generate actual multiple-choice questions for a personalized mock assessment.
+
+The assessment pattern has already been created. You MUST follow that pattern EXACTLY.
+
+
 ${resumeText}
 
-JOB DESCRIPTION:
 ${jobDescription}
 
-Requirements:
-1. Generate exactly ${totalquestion} questions.
-2. Each question must have exactly 4 answer options.
-3. Only ONE option must be correct.
-4. The "correctAnswer" string must EXACTLY match one of the four entries in the "options" array.
-5. Questions must directly evaluate skills and requirements present in the candidate's resume and target job.
-6. Target difficulty distribution:
-   - ~40% Easy
-   - ~40% Medium
-   - ~20% Hard
-7. Avoid duplicate or highly similar questions.
-8. Test real practical knowledge and problem-solving scenarios rather than basic rote memorization.
-9. Provide a concise explanation for why the chosen correct answer is correct.
-10. Explicitly state the topic or skill being tested for each question.
+${JSON.stringify(mocktestpattern, null, 2)}
+
+
+1. Follow the assessment pattern EXACTLY.
+2. Group the generated questions by section in the response.
+3. For each section in "mocktestpattern.sections", generate EXACTLY the number of questions specified by "questionCount" under that "category".
+4. Do NOT add extra questions or remove questions.
+5. Every question MUST contain:
+   - "question": string
+   - "options": array of EXACTLY 4 strings
+   - "correctAnswer": string (MUST EXACTLY match one of the four options)
+   - "topic": string (MUST correspond to a topic from that section's "topicsToTest")
+   - "explanation": concise explanation of why the correct answer is correct
+   - "score": 1
+   - "difficulty": "easy" | "medium" | "hard"
+6. Prioritize the topics explicitly listed in "topicsToTest" for each section.
+7. Do NOT introduce unrelated technologies or concepts.
+8. For Aptitude sections, generate actual quantitative / logical / verbal reasoning problems rather than technical questions.
+9. For Technical sections, test concepts and practical application.
+10. For Resume/Project sections, focus on meaningful projects, technologies, and decisions mentioned in the resume.
 `;
 
-  const ai = getAIClient();
-  const jsonSchema = z.toJSONSchema(mcqQuestionSchema);
+  const jsonSchema = z.toJSONSchema(sectionMCQQuestionSchema);
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3.6-flash",
+      model: AI_CONFIG.DEFAULT_MODEL,
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -238,19 +257,14 @@ Requirements:
 
     const text = response.text || "{}";
     const parsed = JSON.parse(text);
-
-    // Strict validation using Zod schema
-    return mcqQuestionSchema.parse(parsed);
-
+    return sectionMCQQuestionSchema.parse(parsed);
   } catch (error: any) {
     const isQuotaError =
       error.status === 429 || (error.message && error.message.includes("429"));
-
     if (isQuotaError) {
       console.warn("Gemini API quota exceeded (429).");
       throw new Error("Gemini API Quota Exceeded. Please check your API key or limits.");
     }
-
     console.error("Gemini MCQ generation error:", error.message || error);
     throw error;
   }
@@ -287,7 +301,7 @@ Requirements:
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3.6-flash",
+      model: AI_CONFIG.DEFAULT_MODEL,
       contents: prompt,
     });
 
@@ -304,3 +318,155 @@ Requirements:
     throw err;
   }
 };
+
+
+
+export const assessmentPatternSchema = z.object({
+  role: z.string().describe("Target role identified from job description."),
+
+  totalDurationMinutes: z
+    .number()
+    .int()
+    .min(60)
+    .max(90)
+    .describe("Total duration of the assessment in minutes (must be between 60 and 90)."),
+
+  sections: z
+    .array(
+      z.object({
+        category: z.string().describe("Section/category name, e.g. Technical, Aptitude, Resume / Projects, Behavioral."),
+
+        questionCount: z.number().int().positive().describe("Number of questions in this section."),
+
+        durationMinutes: z.number().int().positive().describe("Duration in minutes allocated for this section."),
+
+        difficulty: z.enum(["easy", "medium", "hard", "mixed"]).describe("Difficulty level for this section."),
+
+        reason: z.string().describe("Why this section is relevant to the role and experience level."),
+
+        topicsToTest: z.array(z.string()).min(1).describe("List of topics to test in this section."),
+      })
+    )
+    .min(1),
+});
+
+export type AssessmentPattern = z.infer<typeof assessmentPatternSchema>;
+
+export async function generateAssessmentPattern(
+  resumeText: string,
+  jobDescription: string,
+  experienceLevel: string
+): Promise<AssessmentPattern> {
+  const ai = getAIClient();
+
+  const prompt = `
+You are an expert recruitment assessment designer.
+
+Your task is to design a realistic hiring assessment pattern for a candidate based on their RESUME, JOB DESCRIPTION, and EXPERIENCE LEVEL.
+
+IMPORTANT:
+Do NOT generate the actual questions.
+
+Your ONLY task is to decide:
+- Target role ("role")
+- Total assessment duration in minutes ("totalDurationMinutes", MUST be between 60 and 90 minutes)
+- Assessment sections ("sections"):
+  * "category": Section name (e.g. Technical, Aptitude, Resume / Projects, Behavioral, etc.)
+  * "questionCount": Number of questions in this section
+  * "durationMinutes": Time allocated to this section (sum of all section durationMinutes MUST equal totalDurationMinutes)
+  * "difficulty": "easy" | "medium" | "hard" | "mixed"
+  * "reason": Why this section is relevant
+  * "topicsToTest": Array of specific topics/skills to test in this section
+
+==================================================
+CANDIDATE INFORMATION
+==================================================
+
+EXPERIENCE LEVEL:
+${experienceLevel}
+
+RESUME:
+${resumeText}
+
+JOB DESCRIPTION:
+${jobDescription}
+
+==================================================
+ASSESSMENT DURATION AND TIMING
+==================================================
+
+- The total assessment duration ("totalDurationMinutes") MUST be between 60 and 90 minutes.
+- Each section MUST have its own timer ("durationMinutes").
+- The sum of all section "durationMinutes" MUST equal "totalDurationMinutes".
+- Do NOT use a fixed question count. Decide the number of questions based on topic complexity.
+
+==================================================
+DO NOT TEST EVERYTHING
+==================================================
+
+- Do NOT create questions for every technology, keyword, or framework mentioned in the job description or resume.
+- Prioritize CORE competencies for the target role.
+- Coding / Programming MUST NOT be included automatically for every role. Include it ONLY when the role genuinely requires programming (e.g., Software Engineer).
+- Aptitude MUST NOT be included automatically for every role. Include it ONLY when relevant to that role's expected hiring process.
+- For non-technical roles (HR, Marketing, Sales, Finance, Operations), select domain-appropriate assessment sections (e.g., Domain Knowledge, Situational Judgment, Communication, Logical Reasoning, Business Analysis).
+
+==================================================
+EXPERIENCE LEVEL GUIDELINES
+==================================================
+
+- "College Student" / "Fresher": Focus on programming fundamentals, basic/intermediate DSA, OOP, DBMS/SQL, Computer Networks (when relevant), OS (when relevant), Aptitude (when relevant), core role fundamentals, resume/project questions. Avoid deep distributed systems or production architecture.
+- "0–2 Years": Focus on strong fundamentals, practical programming, DSA, DBMS/SQL, role-specific tech, debugging, practical scenarios, projects, basic system design when relevant.
+- "2–4 Years": Focus on practical problem solving, technical depth, debugging, production scenarios, architecture/design concepts, system design when relevant, trade-offs.
+- "4+ Years": Focus on advanced role-specific knowledge, architecture, system design, scalability, reliability, production/debugging scenarios, technical trade-offs, design decisions.
+
+Do NOT make every question extremely difficult simply because the candidate has more experience; test deeper trade-offs and design rationale.
+
+==================================================
+OUTPUT REQUIREMENT
+==================================================
+
+Return ONLY the valid JSON object matching the schema:
+{
+  "role": "string",
+  "totalDurationMinutes": number,
+  "sections": [
+    {
+      "category": "string",
+      "questionCount": number,
+      "durationMinutes": number,
+      "difficulty": "easy" | "medium" | "hard" | "mixed",
+      "reason": "string",
+      "topicsToTest": ["topic1", "topic2"]
+    }
+  ]
+}
+`;
+
+  const jsonSchema = z.toJSONSchema(assessmentPatternSchema);
+
+  try {
+    const response = await ai.models.generateContent({
+      model: AI_CONFIG.DEFAULT_MODEL,
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseJsonSchema: jsonSchema,
+      },
+    });
+
+    const text = response.text || "{}";
+    const parsed = JSON.parse(text);
+    return assessmentPatternSchema.parse(parsed);
+  } catch (error: any) {
+    const isQuotaError =
+      error.status === 429 || (error.message && error.message.includes("429"));
+    if (isQuotaError) {
+      console.warn("Gemini API Quota Exceeded (429).");
+      throw new Error("Gemini API Quota Exceeded (429). Please check your API key or limits.");
+    }
+    console.error("Error generating assessment pattern:", error.message || error);
+    throw error;
+  }
+}
+
+export const generatemocktestpattern = generateAssessmentPattern;

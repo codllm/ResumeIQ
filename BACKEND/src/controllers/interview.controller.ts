@@ -4,6 +4,8 @@ import {
   generateInterviewReport,
   generatemockquestion,
   generateTextquestion,
+  generatemocktestpattern,
+  MCQQuestion
 } from "../services/ai/ai.service";
 import InterviewReport from "../model/interview.report.model";
 import MCQMockQuestion from "../model/mcqmock.model";
@@ -152,7 +154,7 @@ export const mocktestController = async (
       return;
     }
 
-    const { reportId, totalquestion, totalQuestions } = req.body;
+    const { reportId, experienceLevel } = req.body;
 
     if (!reportId) {
       res.status(400).json({
@@ -161,8 +163,6 @@ export const mocktestController = async (
       });
       return;
     }
-
-    const count = toQuestionCount(totalquestion ?? totalQuestions);
 
     const report = await findUserReport(reportId, userId);
     if (!report) {
@@ -183,13 +183,31 @@ export const mocktestController = async (
       return;
     }
 
+    const expLevelString = typeof experienceLevel === "string" && experienceLevel.trim()
+      ? experienceLevel.trim()
+      : "Fresher";
+
+    const mocktestpattern = await generatemocktestpattern(
+      resumeText,
+      jobDescription,
+      expLevelString
+    );
+
+    if (!mocktestpattern || !mocktestpattern.sections || mocktestpattern.sections.length === 0) {
+      res.status(500).json({
+        success: false,
+        message: "Internal server error. Sorry, we failed to generate your test pattern.",
+      });
+      return;
+    }
+
     const aiResponse = await generatemockquestion(
       resumeText,
       jobDescription,
-      count
+      mocktestpattern
     );
 
-    if (!aiResponse || !aiResponse.questions || aiResponse.questions.length === 0) {
+    if (!aiResponse || !aiResponse.sections || aiResponse.sections.length === 0) {
       res.status(502).json({
         success: false,
         message: "Failed to generate mock questions. Please try again later.",
@@ -197,23 +215,56 @@ export const mocktestController = async (
       return;
     }
 
-    const questionsToInsert = aiResponse.questions.map((q) => ({
-      interviewReport: reportId,
-      question: q.question,
-      options: q.options,
-      correctAnswer: q.correctAnswer,
-      topic: q.topic,
-      explanation: q.explanation,
-      difficulty: q.difficulty,
-    }));
+    const questionsToInsert: Array<{
+      interviewReport: string;
+      category: string;
+      question: string;
+      options: string[];
+      correctAnswer: string;
+      topic: string;
+      explanation: string;
+      difficulty: "easy" | "medium" | "hard";
+      score: number;
+    }> = [];
+
+    for (const section of aiResponse.sections) {
+      for (const q of section.questions) {
+        questionsToInsert.push({
+          interviewReport: reportId,
+          category: section.category,
+          question: q.question,
+          options: q.options,
+          correctAnswer: q.correctAnswer,
+          topic: q.topic,
+          explanation: q.explanation,
+          difficulty: q.difficulty,
+          score: q.score || 1,
+        });
+      }
+    }
 
     const savedQuestions = await MCQMockQuestion.insertMany(questionsToInsert);
+
+    const responseSections = mocktestpattern.sections.map((sec) => {
+      const matchingSaved = savedQuestions.filter((q) => q.category === sec.category);
+      return {
+        category: sec.category,
+        questionCount: sec.questionCount,
+        durationMinutes: sec.durationMinutes,
+        difficulty: sec.difficulty,
+        reason: sec.reason,
+        topicsToTest: sec.topicsToTest,
+        questions: matchingSaved,
+      };
+    });
 
     res.status(201).json({
       success: true,
       message: "Mock test questions generated and saved successfully",
-      count: savedQuestions.length,
-      data: savedQuestions,
+      role: mocktestpattern.role,
+      totalDurationMinutes: mocktestpattern.totalDurationMinutes,
+      totalQuestions: savedQuestions.length,
+      sections: responseSections,
     });
   } catch (error: any) {
     console.error("Error in mocktestController:", error);
