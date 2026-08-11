@@ -2,6 +2,10 @@ import mongoose, { Schema, Document } from "mongoose";
 
 export interface IInterviewReport extends Document {
   user: mongoose.Types.ObjectId;
+  careerProfile?: mongoose.Types.ObjectId;
+  reportType: "base" | "performance";
+  sourceMockTests: mongoose.Types.ObjectId[];
+  sourceMockInterviews: mongoose.Types.ObjectId[];
   jobDescription: string;
   resumeText: string;
   selfDescription: string;
@@ -38,6 +42,29 @@ const interviewReportSchema = new Schema<IInterviewReport>(
       ref: "User",
       required: [true, "User ID is required"],
     },
+    careerProfile: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "CareerProfile",
+      index: true,
+    },
+    reportType: {
+      type: String,
+      enum: ["base", "performance"],
+      default: "base",
+      index: true,
+    },
+    sourceMockTests: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "MockTestSession",
+      },
+    ],
+    sourceMockInterviews: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "MockInterviewSession",
+      },
+    ],
     jobDescription: {
       type: String,
       required: [true, "Job description is required"],

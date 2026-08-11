@@ -1,7 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
-import { success, z } from "zod";
-import { resume } from "../../dummy";
-import { model } from "mongoose";
+import { z } from "zod";
 import { AI_CONFIG } from "../../config/ai.config";
 
 
@@ -135,15 +133,27 @@ function sanitizeInterviewReport(raw: any): InterviewReport {
 export async function generateInterviewReport(
   jobDesc: string,
   resumeText: string,
-  selfDesc: string
+  selfDesc: string,
+  performanceContext?: string
 ): Promise<InterviewReport> {
   const ai = getAIClient();
+
+  const performancePrompt = performanceContext
+    ? `
+Past mock test and mock interview performance:
+${performanceContext}
+
+Use this performance history heavily. Identify repeated weak areas, compare actual answers with expected readiness, and make the preparation plan adaptive to the user's real performance.
+`
+    : "";
 
   const prompt = `Generate a detailed interview report based on the following information: ${JSON.stringify({
     jobDescription: jobDesc,
     resumeText,
     selfDescription: selfDesc,
   })}
+
+${performancePrompt}
 
 You must respond with a JSON object containing EXACTLY these top-level keys, and no others: "technicalQuestions", "behavioralQuestions", "skillGaps", "preparationPlan", "matchScore".
 
@@ -170,6 +180,7 @@ Rules:
 - "skillGaps": include every required/preferred skill from the job description that is missing or weak in the resume.
 - "preparationPlan": a multi-day study plan (at least 3 days), each with a focus area and a list of concrete tasks.
 - "matchScore" must be a plain number between 0 and 10 (e.g. 8.2) — not a string, not a percentage, no "%" sign or units.
+- If past performance is provided, use it to adjust matchScore, skillGaps, questions, and preparationPlan.
 - Output ONLY the JSON object matching the JSON schema.`;
 
   const jsonSchema = z.toJSONSchema(interviewReportSchema);
@@ -270,16 +281,39 @@ ${JSON.stringify(mocktestpattern, null, 2)}
   }
 };
 
+interface InterviewTurnContext {
+  question: string;
+  answer?: string;
+  feedback?: string;
+}
+
 export const generateTextquestion = async (
   resumeText: string,
-  jobDescription: string
+  jobDescription: string,
+  previousTurns: InterviewTurnContext[] = [],
+  questionNumber = 1
 ): Promise<string> => {
   const ai = getAIClient();
+
+  const previousContext = previousTurns.length
+    ? `
+Previous interview conversation:
+${previousTurns
+  .map(
+    (turn, index) => `
+Round ${index + 1}
+Question: ${turn.question}
+Answer: ${turn.answer || "No answer recorded"}
+Feedback: ${turn.feedback || "No feedback recorded"}`
+  )
+  .join("\n")}
+`
+    : "";
 
   const prompt = `
 You are an expert technical interviewer conducting a realistic mock interview.
 
-Generate ONE interview question for the candidate based on their resume and the job description.
+Generate question number ${questionNumber} for the candidate based on their resume, the job description, and the previous interview conversation.
 
 Candidate Resume:
 ${resumeText}
@@ -287,11 +321,15 @@ ${resumeText}
 Job Description:
 ${jobDescription}
 
+${previousContext}
+
 Requirements:
 - Ask only ONE question.
 - The question must be highly relevant to the candidate's resume or target job.
 - Prefer deep questions about projects, technologies, architecture, technical decisions, trade-offs, or implementation.
 - The question should feel like something a real interviewer would ask.
+- If previous answers exist, ask a natural follow-up or move to a new important topic.
+- Do not repeat any previous question.
 - Use a natural conversational tone.
 - Do not provide an answer.
 - Do not provide explanations.
@@ -327,9 +365,9 @@ export const assessmentPatternSchema = z.object({
   totalDurationMinutes: z
     .number()
     .int()
-    .min(60)
-    .max(90)
-    .describe("Total duration of the assessment in minutes (must be between 60 and 90)."),
+    .min(45)
+    .max(60)
+    .describe("Total duration of the assessment in minutes (must be between 45 and 60)."),
 
   sections: z
     .array(
@@ -369,7 +407,7 @@ Do NOT generate the actual questions.
 
 Your ONLY task is to decide:
 - Target role ("role")
-- Total assessment duration in minutes ("totalDurationMinutes", MUST be between 60 and 90 minutes)
+- Total assessment duration in minutes ("totalDurationMinutes", MUST be between 45 and 60 minutes)
 - Assessment sections ("sections"):
   * "category": Section name (e.g. Technical, Aptitude, Resume / Projects, Behavioral, etc.)
   * "questionCount": Number of questions in this section
@@ -395,7 +433,7 @@ ${jobDescription}
 ASSESSMENT DURATION AND TIMING
 ==================================================
 
-- The total assessment duration ("totalDurationMinutes") MUST be between 60 and 90 minutes.
+- The total assessment duration ("totalDurationMinutes") MUST be between 45-60 minutes.
 - Each section MUST have its own timer ("durationMinutes").
 - The sum of all section "durationMinutes" MUST equal "totalDurationMinutes".
 - Do NOT use a fixed question count. Decide the number of questions based on topic complexity.
