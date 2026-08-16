@@ -200,13 +200,13 @@ export const createCareerProfileController = async (
       return;
     }
 
-    const { name, selfDescription, jobDescription, targetRole } = req.body;
+    const { name, resumeText, selfDescription, jobDescription, targetRole } = req.body;
     const resumeFile = req.file;
 
-    if (!resumeFile) {
+    if (!resumeFile && (!resumeText || !String(resumeText).trim())) {
       res.status(400).json({
         success: false,
-        message: "Resume PDF file is required.",
+        message: "Resume PDF file or resumeText is required.",
       });
       return;
     }
@@ -220,7 +220,9 @@ export const createCareerProfileController = async (
     }
 
     // Parse text from uploaded PDF buffer
-    const extractedText = await extractTextFromPdfBuffer(resumeFile.buffer);
+    const extractedText = resumeFile
+      ? await extractTextFromPdfBuffer(resumeFile.buffer)
+      : String(resumeText).trim();
 
     const careerProfile = await CareerProfile.create({
       user: userId,
@@ -257,6 +259,26 @@ export const getCareerProfilesController = async (
       res.status(401).json({
         success: false,
         message: "Unauthorized. User ID not found in token.",
+      });
+      return;
+    }
+
+    const profileId = String(req.params.profileId || "");
+
+    if (profileId) {
+      const careerProfile = await findUserCareerProfile(profileId, userId);
+
+      if (!careerProfile) {
+        res.status(404).json({
+          success: false,
+          message: "Career profile not found for this user.",
+        });
+        return;
+      }
+
+      res.status(200).json({
+        success: true,
+        careerProfile,
       });
       return;
     }
@@ -306,10 +328,19 @@ export const updateCareerProfileController = async (
       return;
     }
 
-    const { name, selfDescription, jobDescription, targetRole, isActive } = req.body;
+    const {
+      name,
+      resumeText,
+      selfDescription,
+      jobDescription,
+      targetRole,
+      isActive,
+    } = req.body;
 
     if (req.file) {
       careerProfile.resumeText = await extractTextFromPdfBuffer(req.file.buffer);
+    } else if (typeof resumeText === "string" && resumeText.trim()) {
+      careerProfile.resumeText = resumeText.trim();
     }
 
     if (typeof name === "string" && name.trim()) {
@@ -367,6 +398,7 @@ export const InterviewController = async (req: Request, res: Response): Promise<
       reportType,
       mode,
       name,
+      resumeText,
       selfDescription,
       jobDescription,
       targetRole,
@@ -392,10 +424,10 @@ export const InterviewController = async (req: Request, res: Response): Promise<
     } else {
       const resumeFile = req.file;
 
-      if (!resumeFile) {
+      if (!resumeFile && (!resumeText || !String(resumeText).trim())) {
         res.status(400).json({
           success: false,
-          message: "Resume PDF file or careerProfileId is required.",
+          message: "Resume PDF file, resumeText, or careerProfileId is required.",
         });
         return;
       }
@@ -408,7 +440,9 @@ export const InterviewController = async (req: Request, res: Response): Promise<
         return;
       }
 
-      const extractedText = await extractTextFromPdfBuffer(resumeFile.buffer);
+      const extractedText = resumeFile
+        ? await extractTextFromPdfBuffer(resumeFile.buffer)
+        : String(resumeText).trim();
 
       careerProfile = await CareerProfile.create({
         user: userId,
@@ -480,6 +514,65 @@ export const InterviewController = async (req: Request, res: Response): Promise<
     });
   }
 };
+
+export const getInterviewReportsController = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const userId = getAuthenticatedUserId(req);
+
+    if (!userId) {
+      res.status(401).json({
+        success: false,
+        message: "Unauthorized. User ID not found in token.",
+      });
+      return;
+    }
+
+    const reportId = String(req.params.reportId || "");
+    const careerProfileId = req.query.careerProfileId ? String(req.query.careerProfileId) : "";
+
+    if (reportId) {
+      const report = await findUserReport(reportId, userId);
+      if (!report) {
+        res.status(404).json({
+          success: false,
+          message: "Interview report not found.",
+        });
+        return;
+      }
+
+      res.status(200).json({
+        success: true,
+        report,
+      });
+      return;
+    }
+
+    const query: any = { user: userId };
+    if (careerProfileId && mongoose.isValidObjectId(careerProfileId)) {
+      query.careerProfile = careerProfileId;
+    }
+
+    const reports = await InterviewReport.find(query)
+      .populate("careerProfile", "name targetRole")
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      reports,
+    });
+  } catch (error: any) {
+    console.error("Error in getInterviewReportsController:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch interview reports.",
+      error: error.message || error,
+    });
+  }
+};
+
 
 
 
@@ -627,11 +720,13 @@ export const mocktestController = async (
       success: true,
       message: "Mock test questions generated and saved successfully",
       mocktestId: mockTestSession._id,
+      sessionId: mockTestSession._id,
       role: mocktestpattern.role,
       totalDurationMinutes: mocktestpattern.totalDurationMinutes,
       totalQuestions: savedQuestions.length,
       totalScore,
       sections: responseSections,
+      questions: savedQuestions,
     });
   } catch (error: any) {
     console.error("Error in mocktestController:", error);

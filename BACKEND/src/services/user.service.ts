@@ -1,4 +1,3 @@
-import { promises } from 'dns';
 import User from '../model/user.model';
 import {hashPassword} from '../model/user.model';
 
@@ -54,6 +53,16 @@ export async function createUser(
   email: string,
   password: string
 ) {
+  const existingUser = await User.findOne({ email });
+
+  if (existingUser) {
+    return {
+      success: false,
+      status: 409,
+      message: "An account with this email already exists. Please sign in.",
+    };
+  }
+
   const hashedPassword = await hashPassword(password);
 
   const user = await User.create({
@@ -63,12 +72,16 @@ export async function createUser(
   });
 
   const token = user.generateToken();
-  if(!token){
-    return false;
-  }
 
   return {
+      success: true,
+      status: 201,
+      message: "Account created successfully.",
       token,
-      user,
+      user: {
+        id: String(user._id),
+        email: user.email,
+        username: user.username,
+      },
   };
 }

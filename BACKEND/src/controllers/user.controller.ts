@@ -1,7 +1,9 @@
 import { Request, Response } from 'express';
-import { loginUser,createUser } from '../services/user.service';
+import { loginUser, createUser } from '../services/user.service';
 import BlacklistTokenModel from '../model/blacklisttoken.model';
 import userModel from '../model/user.model';
+
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export const userLogin = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -12,6 +14,11 @@ export const userLogin = async (req: Request, res: Response): Promise<void> => {
         success: false,
         message: 'Email and password are required',
       });
+      return;
+    }
+
+    if (!emailPattern.test(email.trim())) {
+      res.status(400).json({ success: false, message: "Please enter a valid email address." });
       return;
     }
 
@@ -59,21 +66,36 @@ export const createUserController = async (
       return;
     }
 
-    // Call service
-    const result = await createUser(username, email, password);
-
-    if (!result) {
-      res.status(500).json({
+    if (!emailPattern.test(email)) {
+      res.status(400).json({
         success: false,
-        message: "failed to create user try again.",
+        message: "Please enter a valid email address.",
       });
       return;
     }
 
-    // Success
+    if (password.length < 4) {
+      res.status(400).json({
+        success: false,
+        message: "Password must be at least 4 characters.",
+      });
+      return;
+    }
+
+    // Call service
+    const result = await createUser(username, email, password);
+
+    if (!result.success) {
+      res.status(result.status).json({
+        success: false,
+        message: result.message,
+      });
+      return;
+    }
+
     res.status(201).json({
       success: true,
-      message: "User created successfully.",
+      message: result.message,
       token: result.token,
       user: result.user,
     });
@@ -106,8 +128,7 @@ export const logoutController = async(req:Request,res:Response)=>{
 
 export const getMeController = async(req:Request,res:Response)=>{
 
-  const userID = (req as any).user?.id;
-  console.log(userID);
+  const userID = (req as any).user?.id || (req as any).user._id;
 
   if(!userID){
     return res.status(401).json({success:false,message:'User not Found'})
@@ -122,8 +143,6 @@ export const getMeController = async(req:Request,res:Response)=>{
     });
     return;
   }
-
-  console.log("user found console log via token",user);
 
   return res.status(200).json({success:true,user})
 

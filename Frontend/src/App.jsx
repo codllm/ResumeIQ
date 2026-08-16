@@ -1,6 +1,6 @@
 import React from 'react';
 import { RouterProvider } from 'react-router';
-import { router } from './app.router.jsx';
+import { router } from '../src/routes/page.routes';
 
 function App() {
   return (

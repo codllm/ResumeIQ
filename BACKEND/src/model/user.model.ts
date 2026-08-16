@@ -30,6 +30,7 @@ const UserSchema = new Schema<IUser>(
       unique: true,
       lowercase: true,
       trim: true,
+      match: [/^[^\s@]+@[^\s@]+\.[^\s@]+$/, "Please provide a valid email address"],
     },
     password: {
       type: String,
@@ -46,7 +47,6 @@ const UserSchema = new Schema<IUser>(
     timestamps: true,
   }
 );
-
 
 // Instance Method to Hash Password
 UserSchema.methods.hashPassword = function (password: string): Promise<string> {
