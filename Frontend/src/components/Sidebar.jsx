@@ -1,6 +1,6 @@
 import React from "react";
 import {
-  Sparkles,
+  ScanLine,
   LayoutDashboard,
   FileText,
   Code2,
@@ -20,7 +20,7 @@ const Sidebar = ({ activeNav, setActiveNav, user, activeProfile, onLogout, navig
 
   return (
     <aside className="w-64 h-screen sticky top-0 bg-white border-r border-slate-200/80 p-5 flex flex-col justify-between shrink-0 hidden md:flex z-30">
-      <div className="space-y-6">
+      <div className="space-y-10">
         {/* Logo Brand */}
         <div
           className="flex items-center gap-2.5 px-2 cursor-pointer"
@@ -30,15 +30,15 @@ const Sidebar = ({ activeNav, setActiveNav, user, activeProfile, onLogout, navig
           }}
         >
           <div className="w-9 h-9 rounded-xl bg-emerald-500 text-white flex items-center justify-center font-black shadow-md shadow-emerald-500/20">
-            <Sparkles size={18} />
+            <ScanLine size={18} />
           </div>
-          <span className="font-extrabold text-lg tracking-tight text-slate-900">
+          <span className="font-extrabold text-2xl tracking-tight text-slate-900">
             Resume<span className="text-emerald-600">IQ</span>
           </span>
         </div>
 
         {/* Nav Items */}
-        <nav className="space-y-1">
+        <nav className="space-y-7">
           {sidebarNav.map((item) => {
             const Icon = item.icon;
             const isSelected = activeNav === item.id;
@@ -72,31 +72,7 @@ const Sidebar = ({ activeNav, setActiveNav, user, activeProfile, onLogout, navig
           })}
         </nav>
       </div>
-
-      {/* User Profile Footer */}
-      <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-between">
-        <div className="flex items-center gap-3 overflow-hidden">
-          <div className="w-8 h-8 rounded-full bg-emerald-500 text-white font-bold text-xs flex items-center justify-center shrink-0">
-            {user?.username?.charAt(0).toUpperCase() || "N"}
-          </div>
-          <div className="overflow-hidden">
-            <p className="text-xs font-bold text-slate-800 truncate">
-              {user?.username || user?.email || "Nishant Nikhil"}
-            </p>
-            <p className="text-[10px] text-slate-400 font-medium truncate">
-              {activeProfile?.targetRole || "Software Engineer"}
-            </p>
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={onLogout}
-          title="Sign Out"
-          className="text-slate-400 hover:text-rose-500 p-1.5 rounded-lg hover:bg-rose-50 transition cursor-pointer"
-        >
-          <LogOut size={15} />
-        </button>
-      </div>
+      
     </aside>
   );
 };

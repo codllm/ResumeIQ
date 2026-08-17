@@ -5,6 +5,21 @@ import userModel from '../model/user.model';
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+const toHundredPointScore = (value: unknown, scoreScale?: number): number => {
+  const score = Number(value);
+  if (!Number.isFinite(score)) return 0;
+
+  const scaledScore = scoreScale === 100 || score > 10 ? score : score * 10;
+  return Math.min(100, Math.max(0, Number(scaledScore.toFixed(1))));
+};
+
+const normalizeScoreEntries = (entries: any[] = []) =>
+  entries.map((entry) => ({
+    date: entry.date,
+    score: toHundredPointScore(entry.score, entry.scoreScale),
+    scoreScale: 100,
+  }));
+
 export const userLogin = async (req: Request, res: Response): Promise<void> => {
   try {
     const { email, password } = req.body;
@@ -146,4 +161,40 @@ export const getMeController = async(req:Request,res:Response)=>{
 
   return res.status(200).json({success:true,user})
 
+}
+
+export const userScoreCard = async(req:Request,res:Response)=>{
+  try {
+    const userId = (req as any).user?.id || (req as any).user?._id;
+
+    if(!userId){
+      return res.status(401).json({success:false,message:"Unauthorized User"});
+    }
+
+    const user = await userModel.findById(userId).select("scoreCard");
+    if(!user){
+      return res.status(404).json({success:false,message:"User not found"});
+    }
+
+    const scoreCard = user.scoreCard || {
+      resumeReportCard: [],
+      mocktestReportCard: [],
+      mockInterviewReportCard: [],
+    };
+
+    const reportScoreData = {
+      resumeReportCard: normalizeScoreEntries(scoreCard.resumeReportCard),
+      mocktestReportCard: normalizeScoreEntries(scoreCard.mocktestReportCard),
+      mockInterviewReportCard: normalizeScoreEntries(scoreCard.mockInterviewReportCard),
+    };
+
+    return res.status(200).json({success:true,message:"ScoreCard found successfully",reportScoreData})
+  } catch (error: any) {
+    console.error("ScoreCard fetch error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch score card.",
+      error: error.message,
+    });
+  }
 }

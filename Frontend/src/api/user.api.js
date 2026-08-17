@@ -206,3 +206,19 @@ export const submitMockTestApi = async (payload, token) => {
     };
   }
 };
+
+export const reportScore = async (token) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/user/score-card`, {
+      method: 'GET',
+      headers: getHeaders(token),
+    });
+    const data = await response.json();
+    return data;
+  } catch (err) {
+    return {
+      success: false,
+      message: err.message || 'Failed to fetch score history.',
+    };
+  }
+};

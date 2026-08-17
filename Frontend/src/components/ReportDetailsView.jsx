@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import {
   Calendar,
-  Sparkles,
+  ChartNoAxesCombined,
   Briefcase,
   Code2,
   Users,
@@ -36,25 +36,7 @@ const ReportDetailsView = ({ activeReport, user, onStartInterview }) => {
           <h1 className="text-3xl font-black text-slate-900 tracking-tight">
             Your AI Interview Report
           </h1>
-          <p className="text-xs text-slate-500 font-medium">
-            Personalized insights to help you crack your dream role.
-          </p>
-
-          <div className="pt-2 space-y-1">
-            <p className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
-              <span>👋</span> Hi{" "}
-              <span className="text-indigo-600">{user?.username || "Nishant Nikhil"}</span>,
-            </p>
-            <p className="text-xs text-slate-600 max-w-xl leading-relaxed">
-              We analyzed your resume for the role of{" "}
-              <strong className="text-emerald-700">{activeReport.targetRole}</strong> and generated
-              this personalized report to help you prepare better.
-            </p>
-            <p className="text-[11px] font-semibold text-slate-400 flex items-center gap-1 mt-1">
-              <Calendar size={13} className="text-slate-400" />
-              <span>Generated on {activeReport.date}</span>
-            </p>
-          </div>
+         
         </div>
       </div>
 
@@ -63,7 +45,7 @@ const ReportDetailsView = ({ activeReport, user, onStartInterview }) => {
         {/* Card 1: Match Score */}
         <div className="bg-white border border-slate-200/90 rounded-3xl p-5 shadow-xs flex items-center gap-4">
           <div className="relative w-20 h-20 flex items-center justify-center shrink-0">
-            <div className="w-20 h-20 rounded-full border-4 border-emerald-500 border-t-emerald-200 flex items-center justify-center">
+            <div className="w-20 h-20 rounded-full border-8 border-emerald-500 border-t-emerald-200 flex items-center justify-center">
               <div className="text-center">
                 <span className="text-xl font-black text-slate-900">
                   {activeReport.matchScore ?? 0}
@@ -73,7 +55,7 @@ const ReportDetailsView = ({ activeReport, user, onStartInterview }) => {
             </div>
           </div>
           <div className="space-y-0.5">
-            <h4 className="text-xs font-bold text-emerald-600">Good Match</h4>
+            <h4 className="text-s font-bold text-emerald-600">ATS SCORE</h4>
             <p className="text-[11px] text-slate-500 leading-snug">
               You're a good fit for this role. Focus on improving key skill gaps.
             </p>
@@ -390,8 +372,8 @@ const ReportDetailsView = ({ activeReport, user, onStartInterview }) => {
 
           {/* Motivation Banner */}
           <div className="p-3.5 rounded-2xl bg-indigo-50/50 border border-indigo-100/80 text-center text-xs font-bold text-indigo-900 flex items-center justify-center gap-2">
-            <Sparkles size={14} className="text-indigo-600" />
-            <span>Consistency is the key to success. Practice daily and stay focused! 🚀</span>
+            <ChartNoAxesCombined size={14} className="text-indigo-600" />
+            <span>Consistency is the key to success. Practice daily and stay focused! </span>
           </div>
         </div>
 

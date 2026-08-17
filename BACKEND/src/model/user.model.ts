@@ -10,6 +10,11 @@ export interface IUser extends Document {
   hashPassword(password: string): Promise<string>;
   comparePassword(candidatePassword: string): Promise<boolean>;
   generateToken(): string;
+  scoreCard: {
+    resumeReportCard: { date: Date; score: number; scoreScale?: number }[];
+    mocktestReportCard: { date: Date; score: number; scoreScale?: number }[];
+    mockInterviewReportCard: { date: Date; score: number; scoreScale?: number }[];
+  };
 }
 
 // Standalone Helper Function to Hash Password
@@ -42,10 +47,52 @@ const UserSchema = new Schema<IUser>(
       type: Boolean,
       default: false,
     },
+    scoreCard: {
+      resumeReportCard: [
+        {
+          date: {
+            type: Date,
+          },
+          score: {
+            type: Number,
+          },
+          scoreScale: {
+            type: Number,
+          },
+        },
+      ],
+      mocktestReportCard: [
+        {
+          date: {
+            type: Date,
+          },
+          score: {
+            type: Number,
+          },
+          scoreScale: {
+            type: Number,
+          },
+        },
+      ],
+      mockInterviewReportCard: [
+        {
+          date: {
+            type: Date,
+          },
+          score: {
+            type: Number,
+          },
+          scoreScale: {
+            type: Number,
+          },
+        },
+      ],
+    },
   },
   {
     timestamps: true,
   }
+
 );
 
 // Instance Method to Hash Password

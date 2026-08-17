@@ -17,6 +17,7 @@ import {
 } from "../services/ai/generateaudio.service";
 import MOCKInterview from "../model/mockInterview.model";
 import MockInterviewSession from "../model/mockInterviewSession.model";
+import User from "../model/user.model";
 
 
 const pdfParseModule = require("pdf-parse");
@@ -53,6 +54,12 @@ function normalizeScore(value: unknown): number | undefined {
   const score = Number(value);
   if (!Number.isFinite(score)) return undefined;
   return Math.min(10, Math.max(0, score));
+}
+
+function toHundredPointScore(value: unknown): number {
+  const score = Number(value);
+  if (!Number.isFinite(score)) return 0;
+  return Math.min(100, Math.max(0, Number((score * 10).toFixed(1))));
 }
 
 function toInterviewQuestionCount(value: unknown): number {
@@ -498,6 +505,20 @@ export const InterviewController = async (req: Request, res: Response): Promise<
       skillGaps: aiReport.skillGaps,
       preparationPlan: aiReport.preparationPlan,
     });
+
+    const user = await User.findByIdAndUpdate(
+      userId,
+      {
+        $push: {
+          "scoreCard.resumeReportCard": {
+            date: new Date(),
+            score: toHundredPointScore(aiReport.matchScore),
+            scoreScale: 100,
+          },
+        },
+      },
+      { new: true }
+    );
 
     res.status(201).json({
       success: true,
@@ -1048,6 +1069,7 @@ export const mockInterviewAnswerController = async (
     let isComplete = false;
 
     if (mockInterviewSession) {
+      const wasAlreadyComplete = mockInterviewSession.status === "completed";
       const existingTranscriptIndex = mockInterviewSession.transcript.findIndex(
         (turn) => turn.question === mockInterview.question
       );
@@ -1075,6 +1097,22 @@ export const mockInterviewAnswerController = async (
         mockInterviewSession.completedAt = new Date();
         mockInterviewSession.currentQuestionNumber = answeredTurns.length;
         isComplete = true;
+
+        if (!wasAlreadyComplete) {
+          const averageScore =
+            answeredTurns.reduce((sum, turn) => sum + (Number(turn.score) || 0), 0) /
+            answeredTurns.length;
+
+          await User.findByIdAndUpdate(userId, {
+            $push: {
+              "scoreCard.mockInterviewReportCard": {
+                date: new Date(),
+                score: toHundredPointScore(averageScore),
+                scoreScale: 100,
+              },
+            },
+          });
+        }
       } else {
         const nextQuestionNumber = answeredTurns.length + 1;
         const nextQuestionText = await generateTextquestion(
@@ -1259,6 +1297,21 @@ export const submitmocktestcontroller = async (
     mockTestSession.status = "submitted";
     mockTestSession.submittedAt = new Date();
     await mockTestSession.save();
+
+    const normalizedMockTestScore =
+      mockTestSession.totalScore > 0
+        ? Number(((mocktestscore / mockTestSession.totalScore) * 100).toFixed(1))
+        : 0;
+
+    await User.findByIdAndUpdate(userId, {
+      $push: {
+        "scoreCard.mocktestReportCard": {
+          date: new Date(),
+          score: normalizedMockTestScore,
+          scoreScale: 100,
+        },
+      },
+    });
 
     res.status(200).json({
       success: true,
