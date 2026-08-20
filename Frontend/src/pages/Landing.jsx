@@ -319,7 +319,7 @@ const Landing = () => {
               {/* Submit Button */}
               <button
                 type="submit"
-                disabled={submitting}
+                disablsed={submitting}
                 className="w-full h-11 mt-2 flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl shadow-md shadow-emerald-500/20 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {submitting ? (

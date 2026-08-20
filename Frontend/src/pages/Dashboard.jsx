@@ -25,8 +25,8 @@ import StatCards from "../components/StatCards";
 import ScoreHistoryGraph from "../components/ScoreHistoryGraph";
 import PastReportsList from "../components/PastReportsList";
 import ReportDetailsView from "../components/ReportDetailsView";
-import OnlineAssessment from "../components/onlineAssessmentcomponent";
-
+import StartInterview from "../components/startInterview";
+import StartOnlineAssessment from "../components/StartOnlineAssessment";
 const Dashboard = () => {
   const { user, token, logout } = useUser();
   const navigate = useNavigate();
@@ -90,12 +90,21 @@ const Dashboard = () => {
       year: "numeric",
     }),
     fullDate: new Date(r.createdAt || Date.now()).toLocaleString(),
-    title: r.careerProfile?.name || r.careerProfile?.targetRole || "Software Developer Profile",
+    title:
+      r.careerProfile?.name ||
+      r.careerProfile?.targetRole ||
+      "Software Developer Profile",
     targetRole: r.careerProfile?.targetRole || "Developer",
     matchScore: Number(r.matchScore || 7.8).toFixed(1),
     atsScore: Math.round((r.matchScore || 7.8) * 10),
-    skillMatch: Math.max(50, Math.round(((10 - (r.skillGaps?.length || 0)) / 10) * 100)),
-    keywordMatch: Math.min(98, Math.max(60, Math.round((r.matchScore || 7.8) * 10 + 5))),
+    skillMatch: Math.max(
+      50,
+      Math.round(((10 - (r.skillGaps?.length || 0)) / 10) * 100)
+    ),
+    keywordMatch: Math.min(
+      98,
+      Math.max(60, Math.round((r.matchScore || 7.8) * 10 + 5))
+    ),
     technicalQuestions: r.technicalQuestions || [],
     behavioralQuestions: r.behavioralQuestions || [],
     skillGaps: r.skillGaps || [],
@@ -104,15 +113,20 @@ const Dashboard = () => {
   }));
 
   const activeReport = selectedReport
-    ? formattedReports.find((r) => r.id === selectedReport.id || r.id === selectedReport._id) || formattedReports[0]
+    ? formattedReports.find(
+        (r) => r.id === selectedReport.id || r.id === selectedReport._id
+      ) || formattedReports[0]
     : formattedReports.length > 0
     ? formattedReports[0]
     : null;
 
   // Latest metrics for top cards
-  const latestAtsScore = formattedReports.length > 0 ? formattedReports[0].atsScore : 78;
-  const latestSkillMatch = formattedReports.length > 0 ? formattedReports[0].skillMatch : 70;
-  const latestKeywordMatch = formattedReports.length > 0 ? formattedReports[0].keywordMatch : 83;
+  const latestAtsScore =
+    formattedReports.length > 0 ? formattedReports[0].atsScore : 78;
+  const latestSkillMatch =
+    formattedReports.length > 0 ? formattedReports[0].skillMatch : 70;
+  const latestKeywordMatch =
+    formattedReports.length > 0 ? formattedReports[0].keywordMatch : 83;
 
   const handleGenerateNewReport = async () => {
     if (!activeProfile) {
@@ -125,20 +139,31 @@ const Dashboard = () => {
     setSuccessMsg("");
 
     try {
-      const res = await generateInterviewReportApi({ careerProfileId: activeProfile._id }, token);
+      const res = await generateInterviewReportApi(
+        { careerProfileId: activeProfile._id },
+        token
+      );
       if (res.success && res.report) {
         setSuccessMsg("New AI interview report generated successfully!");
         await fetchDashboardData();
 
         const newFormatted = {
           id: res.report._id,
-          date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+          date: new Date().toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          }),
           fullDate: new Date().toLocaleString(),
-          title: activeProfile.name || activeProfile.targetRole || "Career Profile",
+          title:
+            activeProfile.name || activeProfile.targetRole || "Career Profile",
           targetRole: activeProfile.targetRole || "Developer",
           matchScore: Number(res.report.matchScore || 7.8).toFixed(1),
           atsScore: Math.round((res.report.matchScore || 7.8) * 10),
-          skillMatch: Math.max(50, Math.round(((10 - (res.report.skillGaps?.length || 0)) / 10) * 100)),
+          skillMatch: Math.max(
+            50,
+            Math.round(((10 - (res.report.skillGaps?.length || 0)) / 10) * 100)
+          ),
           keywordMatch: 88,
           technicalQuestions: res.report.technicalQuestions || [],
           behavioralQuestions: res.report.behavioralQuestions || [],
@@ -188,7 +213,10 @@ const Dashboard = () => {
               <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
               <span>{successMsg}</span>
             </div>
-            <button onClick={() => setSuccessMsg("")} className="text-emerald-600 hover:text-emerald-900">
+            <button
+              onClick={() => setSuccessMsg("")}
+              className="text-emerald-600 hover:text-emerald-900"
+            >
               <XCircle size={16} />
             </button>
           </div>
@@ -200,7 +228,10 @@ const Dashboard = () => {
               <AlertTriangle size={16} className="text-rose-600 shrink-0" />
               <span>{error}</span>
             </div>
-            <button onClick={() => setError("")} className="text-rose-600 hover:text-rose-900">
+            <button
+              onClick={() => setError("")}
+              className="text-rose-600 hover:text-rose-900"
+            >
               <XCircle size={16} />
             </button>
           </div>
@@ -222,19 +253,22 @@ const Dashboard = () => {
                 >
                   <div className="bg-white rounded-3xl p-8 shadow-2xl border border-slate-100 max-w-sm w-full text-center space-y-4">
                     <div className="w-16 h-16 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto shadow-inner">
-                      <Loader2 size={32} className="animate-spin text-emerald-600" />
+                      <Loader2
+                        size={32}
+                        className="animate-spin text-emerald-600"
+                      />
                     </div>
                     <div className="space-y-1">
                       <h3 className="text-base font-extrabold text-slate-900">
-                        Generating AI Report...
+                        Generating Resume Report...
                       </h3>
                       <p className="text-xs text-slate-500 leading-relaxed">
-                        Analyzing your resume against target role requirements and calculating ATS scores.
+                        Analyzing your resume against target role requirements
+                        and calculating ATS scores.
                       </p>
                     </div>
                     <div className="pt-2 flex items-center justify-center gap-2 text-[11px] font-bold text-emerald-600 bg-emerald-50 py-2 rounded-xl border border-emerald-100">
-                      <Sparkles size={14} className="animate-pulse" />
-                      <span>Gemini AI Engine Processing</span>
+                      <span> ⏳ AI agent is processing your request...</span>
                     </div>
                   </div>
                 </motion.div>
@@ -300,14 +334,18 @@ const Dashboard = () => {
                 >
                   <div className="bg-white rounded-3xl p-8 shadow-2xl border border-slate-100 max-w-sm w-full text-center space-y-4">
                     <div className="w-16 h-16 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto shadow-inner">
-                      <Loader2 size={32} className="animate-spin text-emerald-600" />
+                      <Loader2
+                        size={32}
+                        className="animate-spin text-emerald-600"
+                      />
                     </div>
                     <div className="space-y-1">
                       <h3 className="text-base font-extrabold text-slate-900">
                         Generating AI Report...
                       </h3>
                       <p className="text-xs text-slate-500 leading-relaxed">
-                        Analyzing your resume against target role requirements and calculating ATS scores.
+                        Analyzing your resume against target role requirements
+                        and calculating ATS scores.
                       </p>
                     </div>
                     <div className="pt-2 flex items-center justify-center gap-2 text-[11px] font-bold text-emerald-600 bg-emerald-50 py-2 rounded-xl border border-emerald-100">
@@ -321,8 +359,13 @@ const Dashboard = () => {
 
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
               <div>
-                <h1 className="text-2xl font-black text-slate-900">Resume Reports Library</h1>
-                <p className="text-xs text-slate-500">Select any report from your scan history to inspect its complete AI analysis.</p>
+                <h1 className="text-2xl font-black text-slate-900">
+                  Resume Reports Library
+                </h1>
+                <p className="text-xs text-slate-500">
+                  Select any report from your scan history to inspect its
+                  complete AI analysis.
+                </p>
               </div>
               <button
                 type="button"
@@ -330,7 +373,11 @@ const Dashboard = () => {
                 onClick={handleGenerateNewReport}
                 className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold text-xs shadow-md shadow-emerald-500/20 transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
               >
-                {generating ? <Loader2 size={15} className="animate-spin" /> : <PlusCircle size={15} />}
+                {generating ? (
+                  <Loader2 size={15} className="animate-spin" />
+                ) : (
+                  <PlusCircle size={15} />
+                )}
                 <span>Generate New Report</span>
               </button>
             </div>
@@ -339,8 +386,13 @@ const Dashboard = () => {
             {formattedReports.length === 0 ? (
               <div className="p-12 text-center bg-white border border-slate-200 rounded-3xl space-y-3">
                 <FileText size={28} className="text-emerald-500 mx-auto" />
-                <h3 className="text-base font-extrabold text-slate-900">No Reports Found</h3>
-                <p className="text-xs text-slate-500">Generate your first report to start analyzing resume alignment.</p>
+                <h3 className="text-base font-extrabold text-slate-900">
+                  No Reports Found
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Generate your first report to start analyzing resume
+                  alignment.
+                </p>
               </div>
             ) : (
               <div className="space-y-6">
@@ -358,15 +410,25 @@ const Dashboard = () => {
                         }`}
                       >
                         <div className="flex items-start justify-between gap-2">
-                          <h4 className="text-xs font-extrabold text-slate-900 line-clamp-1">{rep.title}</h4>
+                          <h4 className="text-xs font-extrabold text-slate-900 line-clamp-1">
+                            {rep.title}
+                          </h4>
                           <span className="text-xs font-black text-emerald-600 bg-white border border-emerald-200 px-2 py-0.5 rounded-md shrink-0">
                             {rep.atsScore}%
                           </span>
                         </div>
-                        <p className="text-[11px] text-slate-500 font-semibold">{rep.targetRole}</p>
+                        <p className="text-[11px] text-slate-500 font-semibold">
+                          {rep.targetRole}
+                        </p>
                         <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-400">
                           <span>📅 {rep.date}</span>
-                          <span className={isSelected ? "text-emerald-700 font-bold" : "text-slate-500"}>
+                          <span
+                            className={
+                              isSelected
+                                ? "text-emerald-700 font-bold"
+                                : "text-slate-500"
+                            }
+                          >
                             {isSelected ? "● Selected" : "Click to view"}
                           </span>
                         </div>
@@ -387,13 +449,16 @@ const Dashboard = () => {
             )}
           </main>
         )}
-        {
-          activeNav === 'oa' &&(
-            <div>
-              <OnlineAssessment/>
-            </div>
-          )
-        }
+        {activeNav === "oa" && (
+          <div>
+            <StartOnlineAssessment />
+          </div>
+        )}
+        {activeNav === "interview" && (
+          <div>
+            <StartInterview />
+          </div>
+        )}
       </div>
     </div>
   );

@@ -21,6 +21,7 @@ router.post("/generate-interview-report", authenticateToken, upload.single("resu
 router.get("/reports", authenticateToken, getInterviewReportsController);
 router.get("/report/:reportId", authenticateToken, getInterviewReportsController);
 
+//routes related to career to user
 router.post("/career-profile", authenticateToken, upload.single("resume"), createCareerProfileController);
 router.get("/career-profiles", authenticateToken, getCareerProfilesController);
 router.get("/career-profile/:profileId", authenticateToken, getCareerProfilesController);

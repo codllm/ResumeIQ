@@ -324,7 +324,7 @@ const ReportDetailsView = ({ activeReport, user, onStartInterview }) => {
             <div className="space-y-4">
               <div>
                 <h3 className="text-sm font-extrabold text-slate-900">
-                  Multi-Day Study Plan ({activeReport.preparationPlan?.length || 3} Days)
+                  Multi-Day Study Plan 
                 </h3>
                 <p className="text-xs text-slate-500">
                   Follow this day-by-day roadmap to bridge your skill gaps.
@@ -340,7 +340,7 @@ const ReportDetailsView = ({ activeReport, user, onStartInterview }) => {
                     <div className="flex items-center gap-2 text-xs font-bold text-emerald-700">
                       <Calendar size={14} />
                       <span>
-                        Day {day.day}: {day.focus}
+                         {day.focus}
                       </span>
                     </div>
                     <ul className="pl-6 space-y-1 text-xs text-slate-600 list-disc">

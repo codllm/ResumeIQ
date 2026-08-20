@@ -47,11 +47,10 @@ const Sidebar = ({ activeNav, setActiveNav, user, activeProfile, onLogout, navig
                 key={item.id}
                 type="button"
                 onClick={() => {
-                  if (item.id === "oa") {
-                    navigate("/online-assessment");
-                  } else if (item.id === "settings") {
+                  if (item.id === "settings") {
                     navigate("/complete-profile");
-                  } else {
+                  }
+                   else {
                     setActiveNav(item.id);
                     navigate("/dashboard");
                   }

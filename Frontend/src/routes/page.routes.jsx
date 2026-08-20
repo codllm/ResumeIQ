@@ -4,7 +4,7 @@ import LandingPage from "../pages/Landing";
 import DashboardPage from "../pages/Dashboard";
 import CompleteProfile from "../pages/completeprofile";
 import ReportPage from "../pages/ReportPage";
-import OnlineAssessment from "../pages/OnlineAssessment";
+import onlineAssessment from "../pages/onlineAssessment";
 import { useUser } from "../context/user.context";
 
 const ProtectedRoute = ({ children }) => {
@@ -15,7 +15,9 @@ const ProtectedRoute = ({ children }) => {
       <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center">
         <div className="flex items-center gap-3">
           <div className="w-5 h-5 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
-          <span className="text-sm font-medium text-slate-300">Loading session...</span>
+          <span className="text-sm font-medium text-slate-300">
+            Loading session...
+          </span>
         </div>
       </div>
     );
@@ -78,10 +80,10 @@ export const router = createBrowserRouter([
     ),
   },
   {
-    path: "/online-assessment",
+    path: "/start/online-assessment",
     element: (
       <ProtectedRoute>
-        <OnlineAssessment />
+        <onlineAssessment />
       </ProtectedRoute>
     ),
   },
