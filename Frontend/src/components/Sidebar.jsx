@@ -47,13 +47,7 @@ const Sidebar = ({ activeNav, setActiveNav, user, activeProfile, onLogout, navig
                 key={item.id}
                 type="button"
                 onClick={() => {
-                  if (item.id === "settings") {
-                    navigate("/complete-profile");
-                  }
-                   else {
-                    setActiveNav(item.id);
-                    navigate("/dashboard");
-                  }
+                  setActiveNav(item.id);
                 }}
                 className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   isSelected

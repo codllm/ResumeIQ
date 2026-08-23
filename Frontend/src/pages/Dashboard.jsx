@@ -27,6 +27,7 @@ import PastReportsList from "../components/PastReportsList";
 import ReportDetailsView from "../components/ReportDetailsView";
 import StartInterview from "../components/startInterview";
 import StartOnlineAssessment from "../components/StartOnlineAssessment";
+import UpdateCarrierProfile from "../pages/UpdateCarrierProfile"
 const Dashboard = () => {
   const { user, token, logout } = useUser();
   const navigate = useNavigate();
@@ -184,6 +185,20 @@ const Dashboard = () => {
     }
   };
 
+  const handleStartInterview = () => {
+    if (!activeProfile?._id) {
+      navigate("/complete-profile");
+      return;
+    }
+
+    navigate("/ai/interview/start-point", {
+      state: {
+        profileId: activeProfile._id,
+        profile: activeProfile,
+      },
+    });
+  };
+
   const handleLogout = async () => {
     await logout();
     navigate("/landing");
@@ -312,7 +327,7 @@ const Dashboard = () => {
               <ReportDetailsView
                 activeReport={activeReport}
                 user={user}
-                onStartInterview={() => navigate("/complete-profile")}
+                onStartInterview={handleStartInterview}
               />
             )}
           </main>
@@ -442,7 +457,7 @@ const Dashboard = () => {
                   <ReportDetailsView
                     activeReport={activeReport}
                     user={user}
-                    onStartInterview={() => navigate("/complete-profile")}
+                    onStartInterview={handleStartInterview}
                   />
                 )}
               </div>
@@ -456,7 +471,12 @@ const Dashboard = () => {
         )}
         {activeNav === "interview" && (
           <div>
-            <StartInterview />
+            <StartInterview activeProfile={activeProfile} activeReport={activeReport} />
+          </div>
+        )}
+        {activeNav==="settings" && (
+          <div>
+            <UpdateCarrierProfile/>
           </div>
         )}
       </div>

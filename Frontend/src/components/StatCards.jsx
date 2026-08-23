@@ -34,6 +34,10 @@ const StatCards = ({ latestAtsScore = 78, latestSkillMatch = 70, latestKeywordMa
             <span className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider">
               Latest Score Snapshot
             </span>
+            <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-emerald-700 bg-emerald-50 px-2 py-1 rounded-full border border-emerald-200">
+              <TrendingUp size={12} />
+              {averageScore}% Avg
+            </span>
           </div>
 
           <div className="flex items-center gap-4">
@@ -57,7 +61,7 @@ const StatCards = ({ latestAtsScore = 78, latestSkillMatch = 70, latestKeywordMa
               </div>
               <h3 className="text-base font-black text-slate-900 mt-2">Resume Fit</h3>
               <p className="text-xs text-slate-500 leading-relaxed mt-1">
-              Latest Report Preview
+                Snapshot from your latest generated report.
               </p>
             </div>
           </div>

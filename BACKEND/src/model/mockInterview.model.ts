@@ -14,7 +14,8 @@ export interface IMockInterview extends Document {
   };
 
   user: mongoose.Types.ObjectId;
-  interviewReport: mongoose.Types.ObjectId;
+  careerProfile?: mongoose.Types.ObjectId;
+  interviewReport?: mongoose.Types.ObjectId;
 }
 
 const mockInterviewSchema = new Schema<IMockInterview>(
@@ -67,10 +68,15 @@ const mockInterviewSchema = new Schema<IMockInterview>(
       index: true,
     },
 
+    careerProfile: {
+      type: Schema.Types.ObjectId,
+      ref: "CareerProfile",
+      index: true,
+    },
+
     interviewReport: {
       type: Schema.Types.ObjectId,
       ref: "InterviewReport",
-      required: true,
       index: true,
     },
   },

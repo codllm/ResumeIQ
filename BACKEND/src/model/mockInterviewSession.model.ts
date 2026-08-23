@@ -11,7 +11,7 @@ interface IMockInterviewTranscript {
 export interface IMockInterviewSession extends Document {
   user: mongoose.Types.ObjectId;
   careerProfile?: mongoose.Types.ObjectId;
-  interviewReport: mongoose.Types.ObjectId;
+  interviewReport?: mongoose.Types.ObjectId;
   questions: mongoose.Types.ObjectId[];
   transcript: IMockInterviewTranscript[];
   status: "in_progress" | "completed";
@@ -48,7 +48,6 @@ const mockInterviewSessionSchema = new Schema<IMockInterviewSession>(
     interviewReport: {
       type: Schema.Types.ObjectId,
       ref: "InterviewReport",
-      required: true,
       index: true,
     },
     questions: [

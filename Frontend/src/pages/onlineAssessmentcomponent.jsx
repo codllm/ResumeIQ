@@ -274,15 +274,20 @@ const OnlineAssessment = () => {
     return () => clearInterval(timer);
   }, [testPhase]);
 
+  useEffect(() => {
+    const phaseParam = new URLSearchParams(location.search).get("phase");
+    if (phaseParam === "permissions") {
+      setTestPhase("permissions");
+    }
+  }, [location.search]);
+
   // PHASE TRANSITION 1: Move from Entry Card to Permissions Setup
   const handleEnterPortal = () => {
-    if (location.pathname !== "/online-assessment") {
-      const params = new URLSearchParams();
-      if (selectedReportId) params.set("reportId", selectedReportId);
-      params.set("phase", "permissions");
-      navigate(`/online-assessment?${params.toString()}`);
-      return;
-    }
+    const params = new URLSearchParams(location.search);
+    if (selectedReportId) params.set("reportId", selectedReportId);
+    params.set("phase", "permissions");
+    const targetPath = location.pathname === "/" ? "/online-assessment" : location.pathname;
+    navigate(`${targetPath}?${params.toString()}`);
     setTestPhase("permissions");
   };
 
@@ -817,7 +822,13 @@ const OnlineAssessment = () => {
           <div className="flex items-center gap-3 w-full">
             <button
               type="button"
-              onClick={() => setTestPhase("entry")}
+              onClick={() => {
+                const params = new URLSearchParams(location.search);
+                params.delete("phase");
+                const targetPath = location.pathname === "/" ? "/online-assessment" : location.pathname;
+                navigate(`${targetPath}?${params.toString()}`);
+                setTestPhase("entry");
+              }}
               className="px-5 py-3.5 rounded-2xl bg-white border border-slate-200 text-slate-700 font-extrabold text-xs hover:bg-slate-100 cursor-pointer"
             >
               Back

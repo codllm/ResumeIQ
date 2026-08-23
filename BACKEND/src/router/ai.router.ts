@@ -18,7 +18,7 @@ const router = Router();
 
 // POST /api/ai/generate-interview-report
 router.post("/generate-interview-report", authenticateToken, upload.single("resume"), InterviewController);
-router.get("/reports", authenticateToken, getInterviewReportsController);
+router.get("/all-reports", authenticateToken, getInterviewReportsController);
 router.get("/report/:reportId", authenticateToken, getInterviewReportsController);
 
 //routes related to career to user
@@ -33,5 +33,6 @@ router.post("/mock-test/submit", authenticateToken, submitmocktestcontroller);
 router.post("/mock-interview/start", authenticateToken, mockInterviewController);
 router.post("/mock-interview/answer", authenticateToken, upload.single("audioAnswer"), mockInterviewAnswerController);
 router.get("/mock-interview/audio/:mockInterviewId", mockInterviewAudioController);
+
 
 export default router;

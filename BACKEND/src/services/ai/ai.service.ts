@@ -326,10 +326,15 @@ ${previousContext}
 Requirements:
 - Ask only ONE question.
 - The question must be highly relevant to the candidate's resume or target job.
-- Prefer deep questions about projects, technologies, architecture, technical decisions, trade-offs, or implementation.
+- Prefer easy-to-medium practical questions about the skills, projects, and tools explicitly mentioned in the resume or job description.
+- If the candidate mentions skills like React, Node.js, MongoDB, Express, WebSockets, or similar, ask about those actual mentioned skills before introducing any new topic.
 - The question should feel like something a real interviewer would ask.
-- If previous answers exist, ask a natural follow-up or move to a new important topic.
+- If the previous answer was shallow, vague, partly incorrect, or introduced an important claim, ask a direct follow-up on that same context.
+- If the previous answer was clear enough or the topic has been explored sufficiently, move to a new important topic from the resume or job description.
+- Keep follow-ups related to the candidate's actual answer; do not ask unrelated trick questions.
 - Do not repeat any previous question.
+- Keep the question concise, usually under 30 words.
+- Do not ask multiple-part architecture-heavy questions unless the candidate's answer naturally leads there.
 - Use a natural conversational tone.
 - Do not provide an answer.
 - Do not provide explanations.

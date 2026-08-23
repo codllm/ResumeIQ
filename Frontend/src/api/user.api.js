@@ -173,6 +173,22 @@ export const getInterviewReportByIdApi = async (reportId, token) => {
   }
 };
 
+export const getCareerProfileByIdApi = async (profileId, token) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/ai/career-profile/${profileId}`, {
+      method: 'GET',
+      headers: getHeaders(token),
+    });
+    const data = await response.json();
+    return data;
+  } catch (err) {
+    return {
+      success: false,
+      message: err.message || 'Failed to fetch career profile.',
+    };
+  }
+};
+
 export const startMockTestApi = async (payload, token) => {
   try {
     const response = await fetch(`${API_BASE_URL}/api/ai/mock-test/start`, {
@@ -188,6 +204,56 @@ export const startMockTestApi = async (payload, token) => {
       message: err.message || 'Failed to start mock test.',
     };
   }
+};
+
+export const startMockInterviewApi = async (payload, token) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/ai/mock-interview/start`, {
+      method: 'POST',
+      headers: getHeaders(token),
+      body: JSON.stringify(payload),
+    });
+    const data = await response.json();
+    return data;
+  } catch (err) {
+    return {
+      success: false,
+      message: err.message || 'Failed to start mock interview.',
+    };
+  }
+};
+
+export const submitMockInterviewAnswerApi = async (payload, token) => {
+  try {
+    let body;
+    let isFormData = false;
+
+    if (payload instanceof FormData) {
+      body = payload;
+      isFormData = true;
+    } else {
+      body = JSON.stringify(payload);
+    }
+
+    const response = await fetch(`${API_BASE_URL}/api/ai/mock-interview/answer`, {
+      method: 'POST',
+      headers: getHeaders(token, isFormData),
+      body,
+    });
+    const data = await response.json();
+    return data;
+  } catch (err) {
+    return {
+      success: false,
+      message: err.message || 'Failed to submit mock interview answer.',
+    };
+  }
+};
+
+export const getMockInterviewAudioUrl = (audioUrl = '') => {
+  if (!audioUrl) return '';
+  if (/^https?:\/\//i.test(audioUrl)) return audioUrl;
+  return `${API_BASE_URL}${audioUrl}`;
 };
 
 export const submitMockTestApi = async (payload, token) => {
@@ -222,3 +288,30 @@ export const reportScore = async (token) => {
     };
   }
 };
+export const getalltheProfile = async (token) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/ai/career-profiles`, {
+      method: 'GET',
+      headers: getHeaders(token),
+    });
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+};
+
+export const updateCareerProfileApi = async (profileId, data, token, isFormData = false) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/ai/career-profile/${profileId}`, {
+      method: 'PATCH',
+      headers: getHeaders(token, isFormData),
+      body: isFormData ? data : JSON.stringify(data),
+    });
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+};
+

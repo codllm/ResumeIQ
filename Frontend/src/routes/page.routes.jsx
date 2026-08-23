@@ -4,7 +4,9 @@ import LandingPage from "../pages/Landing";
 import DashboardPage from "../pages/Dashboard";
 import CompleteProfile from "../pages/completeprofile";
 import ReportPage from "../pages/ReportPage";
-import onlineAssessment from "../pages/onlineAssessment";
+import OnlineAssessment from "../pages/onlineAssessmentcomponent";
+import InterviewPages from "../pages/InterviewPages";
+import LiveInterview from "../pages/LiveInterview";
 import { useUser } from "../context/user.context";
 
 const ProtectedRoute = ({ children }) => {
@@ -83,7 +85,39 @@ export const router = createBrowserRouter([
     path: "/start/online-assessment",
     element: (
       <ProtectedRoute>
-        <onlineAssessment />
+        <OnlineAssessment />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/online-assessment",
+    element: (
+      <ProtectedRoute>
+        <OnlineAssessment />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/mock-interview",
+    element: (
+      <ProtectedRoute>
+        <InterviewPages />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/ai/interview/start-point",
+    element: (
+      <ProtectedRoute>
+        <InterviewPages />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/ai/interview/live",
+    element: (
+      <ProtectedRoute>
+        <LiveInterview />
       </ProtectedRoute>
     ),
   },

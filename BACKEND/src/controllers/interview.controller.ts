@@ -64,8 +64,8 @@ function toHundredPointScore(value: unknown): number {
 
 function toInterviewQuestionCount(value: unknown): number {
   const parsed = Number(value);
-  if (!Number.isFinite(parsed)) return 5;
-  return Math.min(10, Math.max(1, Math.floor(parsed)));
+  if (!Number.isFinite(parsed)) return 6;
+  return Math.min(8, Math.max(4, Math.floor(parsed)));
 }
 
 function normalizeReportType(value: unknown): "base" | "performance" {
@@ -776,43 +776,77 @@ export const mockInterviewController = async (
       return;
     }
 
-    const { reportId, totalQuestions } = req.body;
+    const {
+      profileId,
+      careerProfileId,
+      profileName,
+      profilename,
+      reportId,
+      totalQuestions,
+    } = req.body;
 
-    if (!reportId) {
+    const selectedProfileId = profileId || careerProfileId;
+    const selectedProfileName = profileName || profilename;
+    let profile: any = null;
+    let report: any = null;
+
+    if (selectedProfileId) {
+      profile = await findUserCareerProfile(String(selectedProfileId), userId);
+      if (!profile) {
+        res.status(404).json({
+          success: false,
+          message: "Career profile not found for this user.",
+        });
+        return;
+      }
+    } else if (selectedProfileName) {
+      const cleanName = String(selectedProfileName).trim();
+      profile = await CareerProfile.findOne({
+        user: userId,
+        isActive: true,
+        $or: [{ name: cleanName }, { targetRole: cleanName }],
+      });
+
+      if (!profile) {
+        res.status(404).json({
+          success: false,
+          message: "Career profile not found for this user.",
+        });
+        return;
+      }
+    } else if (reportId) {
+      report = await findUserReport(String(reportId), userId);
+      if (!report) {
+        res.status(404).json({
+          success: false,
+          message: "Interview report not found for this user.",
+        });
+        return;
+      }
+
+      if (report.careerProfile) {
+        profile = await findUserCareerProfile(String(report.careerProfile), userId);
+      }
+    } else {
       res.status(400).json({
         success: false,
-        message: "Report ID is required",
+        message: "profileId is required to start an interview.",
       });
       return;
     }
 
-    // Find the report belonging to this user
-    const report = await findUserReport(reportId, userId);
-
-    if (!report) {
-      res.status(404).json({
-        success: false,
-        message: "Interview report not found for this user",
-      });
-      return;
-    }
-
-    const { resumeText, jobDescription } = report;
+    const resumeText = profile?.resumeText || report?.resumeText;
+    const jobDescription = profile?.jobDescription || report?.jobDescription;
 
     if (!resumeText || !jobDescription) {
       res.status(400).json({
         success: false,
-        message: "Resume or job description is missing",
+        message: "Resume or job description is missing from the selected profile.",
       });
       return;
     }
 
-    // --------------------------------
-    // 1. Generate interview question
-    // --------------------------------
-
     const totalInterviewQuestions = toInterviewQuestionCount(totalQuestions);
-
     const text_form_q = await generateTextquestion(
       resumeText,
       jobDescription,
@@ -828,10 +862,6 @@ export const mockInterviewController = async (
       return;
     }
 
-    // --------------------------------
-    // 2. Convert question → audio
-    // --------------------------------
-
     const text_audio = await generate_text_audio(text_form_q);
 
     if (!text_audio) {
@@ -842,17 +872,13 @@ export const mockInterviewController = async (
       return;
     }
 
-    // --------------------------------
-    // 3. Save question + audio
-    // --------------------------------
-
+    const careerProfileObjectId = profile?._id || report?.careerProfile;
+    const interviewReportObjectId = report?._id;
     const mockInterview = await MOCKInterview.create({
       question: text_form_q,
-
       user: userId,
-
-      interviewReport: reportId,
-
+      careerProfile: careerProfileObjectId,
+      interviewReport: interviewReportObjectId,
       audio: {
         data: text_audio.buffer,
         mimeType: text_audio.mimeType,
@@ -861,38 +887,29 @@ export const mockInterviewController = async (
 
     const mockInterviewSession = await MockInterviewSession.create({
       user: userId,
-      careerProfile: report.careerProfile,
-      interviewReport: reportId,
+      careerProfile: careerProfileObjectId,
+      interviewReport: interviewReportObjectId,
       questions: [mockInterview._id],
       transcript: [{ question: text_form_q }],
       totalQuestions: totalInterviewQuestions,
       currentQuestionNumber: 1,
     });
 
-    // --------------------------------
-    // 4. Return only URL, NOT Base64
-    // --------------------------------
-
     res.status(201).json({
       success: true,
-
       message: "Mock interview question generated successfully",
-
       data: {
         mockInterviewSessionId: mockInterviewSession._id,
-
+        sessionId: mockInterviewSession._id,
         mockInterviewId: mockInterview._id,
-
-        reportId,
-
+        profileId: careerProfileObjectId,
+        reportId: interviewReportObjectId,
         text: text_form_q,
-
         audioUrl: `/api/ai/mock-interview/audio/${mockInterview._id}`,
-
         questionNumber: 1,
-
         totalQuestions: totalInterviewQuestions,
-
+        durationSeconds: 13 * 60,
+        estimatedDurationMinutes: "10-13",
         isComplete: false,
       },
     });
@@ -926,6 +943,8 @@ export const mockInterviewAnswerController = async (
 
     const {
       reportId,
+      profileId,
+      careerProfileId,
       mockInterviewSessionId,
       sessionId,
       mockInterviewId,
@@ -937,25 +956,7 @@ export const mockInterviewAnswerController = async (
     const questionText = text_form_q || question;
     const interviewSessionId = mockInterviewSessionId || sessionId;
 
-    if (!reportId) {
-      res.status(400).json({
-        success: false,
-        message: "Report ID is required",
-      });
-      return;
-    }
-
-    const report = await findUserReport(reportId, userId);
-
-    if (!report) {
-      res.status(404).json({
-        success: false,
-        message: "Interview report not found for this user",
-      });
-      return;
-    }
-
-    let mockInterviewSession = null;
+    let mockInterviewSession: any = null;
 
     if (interviewSessionId) {
       if (!mongoose.isValidObjectId(interviewSessionId)) {
@@ -969,7 +970,6 @@ export const mockInterviewAnswerController = async (
       mockInterviewSession = await MockInterviewSession.findOne({
         _id: interviewSessionId,
         user: userId,
-        interviewReport: reportId,
       });
 
       if (!mockInterviewSession) {
@@ -981,7 +981,40 @@ export const mockInterviewAnswerController = async (
       }
     }
 
-    let mockInterview = null;
+    let report: any = null;
+    let profile: any = null;
+    const selectedProfileId =
+      careerProfileId || profileId || mockInterviewSession?.careerProfile;
+    const selectedReportId = reportId || mockInterviewSession?.interviewReport;
+
+    if (selectedProfileId) {
+      profile = await findUserCareerProfile(String(selectedProfileId), userId);
+    }
+
+    if (selectedReportId) {
+      report = await findUserReport(String(selectedReportId), userId);
+    }
+
+    if (!profile && !report) {
+      res.status(404).json({
+        success: false,
+        message: "Interview profile context not found for this user.",
+      });
+      return;
+    }
+
+    const sourceResumeText = profile?.resumeText || report?.resumeText;
+    const sourceJobDescription = profile?.jobDescription || report?.jobDescription;
+
+    if (!sourceResumeText || !sourceJobDescription) {
+      res.status(400).json({
+        success: false,
+        message: "Resume or job description is missing for this interview.",
+      });
+      return;
+    }
+
+    let mockInterview: any = null;
 
     if (mockInterviewId) {
       if (!mongoose.isValidObjectId(mockInterviewId)) {
@@ -995,13 +1028,26 @@ export const mockInterviewAnswerController = async (
       mockInterview = await MOCKInterview.findOne({
         _id: mockInterviewId,
         user: userId,
-        interviewReport: reportId,
       });
 
       if (!mockInterview) {
         res.status(404).json({
           success: false,
-          message: "Mock interview session not found for this user",
+          message: "Mock interview question not found for this user",
+        });
+        return;
+      }
+
+      if (
+        mockInterviewSession &&
+        !mockInterviewSession.questions.some(
+          (savedQuestionId: mongoose.Types.ObjectId) =>
+            savedQuestionId.toString() === mockInterview._id.toString()
+        )
+      ) {
+        res.status(403).json({
+          success: false,
+          message: "This question does not belong to the active interview session.",
         });
         return;
       }
@@ -1009,16 +1055,26 @@ export const mockInterviewAnswerController = async (
       if (!mockInterviewSession) {
         mockInterviewSession = await MockInterviewSession.findOne({
           user: userId,
-          interviewReport: reportId,
           questions: mockInterview._id,
         });
       }
     } else if (questionText) {
-      mockInterview = await MOCKInterview.findOne({
+      const questionQuery: any = {
         user: userId,
-        interviewReport: reportId,
         question: questionText,
-      }).sort({ createdAt: -1 });
+      };
+
+      if (mockInterviewSession?.careerProfile) {
+        questionQuery.careerProfile = mockInterviewSession.careerProfile;
+      }
+
+      if (mockInterviewSession?.interviewReport) {
+        questionQuery.interviewReport = mockInterviewSession.interviewReport;
+      }
+
+      mockInterview = await MOCKInterview.findOne(questionQuery).sort({
+        createdAt: -1,
+      });
     }
 
     if (!mockInterview && !questionText) {
@@ -1033,7 +1089,8 @@ export const mockInterviewAnswerController = async (
       mockInterview = await MOCKInterview.create({
         question: questionText,
         user: userId,
-        interviewReport: reportId,
+        careerProfile: profile?._id || report?.careerProfile,
+        interviewReport: report?._id,
       });
     }
 
@@ -1054,32 +1111,22 @@ export const mockInterviewAnswerController = async (
       return;
     }
 
-    const evaluation = await evaluateMockAnswer(
-      mockInterview.question,
-      answer_text
-    );
-
     mockInterview.answer = answer_text;
-    mockInterview.score = normalizeScore(evaluation?.score);
-    mockInterview.technicalCorrectness = evaluation?.technicalCorrectness;
-    mockInterview.feedback = evaluation?.feedback;
     await mockInterview.save();
 
     let nextQuestionData = null;
     let isComplete = false;
+    let finalResult = null;
 
     if (mockInterviewSession) {
       const wasAlreadyComplete = mockInterviewSession.status === "completed";
       const existingTranscriptIndex = mockInterviewSession.transcript.findIndex(
-        (turn) => turn.question === mockInterview.question
+        (turn: any) => turn.question === mockInterview.question
       );
 
       const completedTurn = {
         question: mockInterview.question,
         answer: answer_text,
-        score: normalizeScore(evaluation?.score),
-        feedback: evaluation?.feedback,
-        technicalCorrectness: evaluation?.technicalCorrectness,
       };
 
       if (existingTranscriptIndex >= 0) {
@@ -1089,7 +1136,7 @@ export const mockInterviewAnswerController = async (
       }
 
       const answeredTurns = mockInterviewSession.transcript.filter(
-        (turn) => Boolean(turn.answer)
+        (turn: any) => Boolean(turn.answer)
       );
 
       if (answeredTurns.length >= mockInterviewSession.totalQuestions) {
@@ -1099,9 +1146,52 @@ export const mockInterviewAnswerController = async (
         isComplete = true;
 
         if (!wasAlreadyComplete) {
+          const evaluatedTurns = [];
+
+          for (let index = 0; index < answeredTurns.length; index += 1) {
+            const turn = answeredTurns[index];
+            const evaluation = await evaluateMockAnswer(turn.question, turn.answer);
+            const score = normalizeScore(evaluation?.score);
+            const evaluatedTurn = {
+              question: turn.question,
+              answer: turn.answer,
+              score,
+              feedback: evaluation?.feedback,
+              technicalCorrectness: evaluation?.technicalCorrectness,
+            };
+
+            evaluatedTurns.push(evaluatedTurn);
+
+            const questionId = mockInterviewSession.questions[index];
+            if (questionId) {
+              await MOCKInterview.findOneAndUpdate(
+                {
+                  _id: questionId,
+                  user: userId,
+                },
+                {
+                  score,
+                  feedback: evaluation?.feedback,
+                  technicalCorrectness: evaluation?.technicalCorrectness,
+                }
+              );
+            }
+          }
+
+          mockInterviewSession.transcript = evaluatedTurns;
+
           const averageScore =
-            answeredTurns.reduce((sum, turn) => sum + (Number(turn.score) || 0), 0) /
-            answeredTurns.length;
+            evaluatedTurns.reduce(
+              (sum: number, turn: any) => sum + (Number(turn.score) || 0),
+              0
+            ) / evaluatedTurns.length;
+
+          finalResult = {
+            averageScore: Number(averageScore.toFixed(1)),
+            scorePercentage: toHundredPointScore(averageScore),
+            totalQuestions: evaluatedTurns.length,
+            transcript: evaluatedTurns,
+          };
 
           await User.findByIdAndUpdate(userId, {
             $push: {
@@ -1112,13 +1202,29 @@ export const mockInterviewAnswerController = async (
               },
             },
           });
+        } else {
+          const evaluatedTurns = mockInterviewSession.transcript.filter(
+            (turn: any) => Boolean(turn.answer)
+          );
+          const averageScore =
+            evaluatedTurns.reduce(
+              (sum: number, turn: any) => sum + (Number(turn.score) || 0),
+              0
+            ) / Math.max(1, evaluatedTurns.length);
+
+          finalResult = {
+            averageScore: Number(averageScore.toFixed(1)),
+            scorePercentage: toHundredPointScore(averageScore),
+            totalQuestions: evaluatedTurns.length,
+            transcript: evaluatedTurns,
+          };
         }
       } else {
         const nextQuestionNumber = answeredTurns.length + 1;
         const nextQuestionText = await generateTextquestion(
-          report.resumeText,
-          report.jobDescription,
-          answeredTurns.map((turn) => ({
+          sourceResumeText,
+          sourceJobDescription,
+          answeredTurns.map((turn: any) => ({
             question: turn.question,
             answer: turn.answer,
             feedback: turn.feedback,
@@ -1130,7 +1236,8 @@ export const mockInterviewAnswerController = async (
         const nextMockInterview = await MOCKInterview.create({
           question: nextQuestionText,
           user: userId,
-          interviewReport: reportId,
+          careerProfile: profile?._id || report?.careerProfile,
+          interviewReport: report?._id,
           audio: {
             data: nextQuestionAudio.buffer,
             mimeType: nextQuestionAudio.mimeType,
@@ -1146,6 +1253,7 @@ export const mockInterviewAnswerController = async (
           text: nextQuestionText,
           audioUrl: `/api/ai/mock-interview/audio/${nextMockInterview._id}`,
           questionNumber: nextQuestionNumber,
+          totalQuestions: mockInterviewSession.totalQuestions,
         };
       }
 
@@ -1154,18 +1262,23 @@ export const mockInterviewAnswerController = async (
 
     res.status(200).json({
       success: true,
-      message: "Mock interview answer evaluated and saved successfully",
+      message: isComplete
+        ? "Mock interview completed and evaluated successfully"
+        : "Mock interview answer saved successfully",
       mockInterviewSessionId: mockInterviewSession?._id,
       question: mockInterview.question,
       answer: answer_text,
-      evaluation,
       data: mockInterview,
+      finalResult,
       interview: mockInterviewSession
         ? {
             status: mockInterviewSession.status,
             isComplete,
             currentQuestionNumber: mockInterviewSession.currentQuestionNumber,
             totalQuestions: mockInterviewSession.totalQuestions,
+            durationSeconds: 13 * 60,
+            transcript: mockInterviewSession.transcript,
+            finalResult,
             nextQuestion: nextQuestionData,
           }
         : undefined,

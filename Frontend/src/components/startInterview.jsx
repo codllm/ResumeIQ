@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router";
 import {
-  Sparkles,
   Play,
   Loader2,
   Clock,
@@ -12,31 +11,36 @@ import {
   ArrowRight,
 } from "lucide-react";
 
-const StartInterviewComponent = ({ activeReport }) => {
+const StartInterviewComponent = ({ activeReport, activeProfile }) => {
   const navigate = useNavigate();
   const [isStarting, setIsStarting] = useState(false);
-  window.addEventListener('wheel', (e) => e.preventDefault(), { passive: false });
-  window.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
+
+  const selectedProfile = activeProfile || activeReport?.careerProfile || activeReport?.rawReport?.careerProfile;
   const targetRoleName =
-    activeReport?.careerProfile?.targetRole ||
-    activeReport?.careerProfile?.name ||
+    selectedProfile?.targetRole ||
+    selectedProfile?.name ||
     "Software Engineer";
 
   const handleStartInterview = () => {
+    if (!selectedProfile?._id) {
+      navigate("/complete-profile");
+      return;
+    }
+
     setIsStarting(true);
     setTimeout(() => {
-      navigate("/ai/interview/start-point");
-    }, 3000);
+      navigate("/ai/interview/start-point", {
+        state: {
+          profileId: selectedProfile._id,
+          profile: selectedProfile,
+        },
+      });
+    }, 700);
   };
 
   return (
     <div className="min-h-screen bg-emerald-50/40 flex items-center justify-center p-4 sm:p-6 font-sans text-slate-800">
       <div className="w-full max-w-lg relative">
-        {/* Decorative background glow elements */}
-        <div className="absolute -top-10 -left-10 w-40 h-40 bg-emerald-200/50 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-emerald-300/30 rounded-full blur-3xl pointer-events-none" />
-
-        {/* Main Card */}
         <div className="relative bg-white border border-emerald-100 rounded-3xl shadow-xl shadow-emerald-900/5 p-3 sm:p-8 space-y-6">
           
           {/* Header & Icon */}
@@ -111,7 +115,7 @@ const StartInterviewComponent = ({ activeReport }) => {
             ) : (
               <>
                 <Play className="w-4 h-4 fill-white" />
-                <span>Start Interview</span>
+                <span>{selectedProfile?._id ? "Start Interview" : "Create Profile First"}</span>
                 <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
               </>
             )}
