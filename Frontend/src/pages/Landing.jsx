@@ -17,12 +17,14 @@ import {
   Zap,
   UploadCloud,
 } from "lucide-react";
-import { useUser } from "../context/user.context";
+import { useUser,userContext } from "../context/user.context";
 import { userLogin, userRegister } from "../api/user.api";
+
 
 const Landing = () => {
   const { user, login, isAuthenticated } = useUser();
   const navigate = useNavigate();
+
 
   const [loginmode, setloginmode] = useState(true);
   const [email, setemail] = useState("");
@@ -123,7 +125,7 @@ const Landing = () => {
             </span>
             <button
               type="button"
-              onClick={() => navigate("/dashboard")}
+              onClick={() => localStorage.getItem("resumeiq_token")?navigate("/dashboard"):""}
               className="text-xs font-semibold px-4 py-2 rounded-xl bg-emerald-500 text-white hover:bg-emerald-600 transition cursor-pointer shadow-md shadow-emerald-500/10 flex items-center gap-1.5"
             >
               Go to Dashboard <ArrowRight size={14} />

@@ -121,10 +121,10 @@ const ReportPage = () => {
         setSuccessMsg("New AI interview report generated successfully!");
         initData();
       } else {
-        setError(res.message || "Failed to generate interview report.");
+        setError(res.message || "Our AI is currently experiencing high traffic. Please try again in a few moments.");
       }
     } catch (err) {
-      setError("An error occurred while generating report.");
+      setError("Our AI is currently experiencing high traffic. Please try again in a few moments.");
     } finally {
       setGenerating(false);
     }

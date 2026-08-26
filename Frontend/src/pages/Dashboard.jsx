@@ -44,6 +44,10 @@ const Dashboard = () => {
   const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
 
+  const [selectedProfileId, setSelectedProfileId] = useState(() => {
+    return localStorage.getItem("active_profile_id") || null;
+  });
+
   // Fetch data on mount
   const fetchDashboardData = async () => {
     if (!token) return;
@@ -79,8 +83,15 @@ const Dashboard = () => {
     fetchDashboardData();
   }, [token]);
 
-  // Active target profile summary
-  const activeProfile = profiles.length > 0 ? profiles[0] : null;
+  // Active target profile calculation
+  const activeProfile =
+    profiles.find((p) => p._id === selectedProfileId) ||
+    (profiles.length > 0 ? profiles[0] : null);
+
+  const handleSelectProfile = (profileId) => {
+    setSelectedProfileId(profileId);
+    localStorage.setItem("active_profile_id", profileId);
+  };
 
   // Format real reports for display
   const formattedReports = reports.map((r) => ({
@@ -146,6 +157,7 @@ const Dashboard = () => {
       );
       if (res.success && res.report) {
         setSuccessMsg("New AI interview report generated successfully!");
+        setReports((prev) => [res.report, ...prev.filter((r) => r._id !== res.report._id)]);
         await fetchDashboardData();
 
         const newFormatted = {
@@ -176,10 +188,13 @@ const Dashboard = () => {
         // Select newly generated report without tab navigation
         setSelectedReport(newFormatted);
       } else {
-        setError(res.message || "Failed to generate report.");
+        setError(
+          res.message ||
+            "Our AI is currently experiencing high traffic. Please try again in a few moments."
+        );
       }
     } catch (err) {
-      setError("Error generating report.");
+      setError("Our AI is currently experiencing high traffic. Please try again in a few moments.");
     } finally {
       setGenerating(false);
     }
@@ -266,37 +281,67 @@ const Dashboard = () => {
                   exit={{ opacity: 0 }}
                   className="absolute inset-0 bg-slate-900/30 backdrop-blur-sm z-30 flex items-center justify-center p-4 rounded-3xl"
                 >
-                  <div className="bg-white rounded-3xl p-8 shadow-2xl border border-slate-100 max-w-sm w-full text-center space-y-4">
-                    <div className="w-16 h-16 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto shadow-inner">
-                      <Loader2
-                        size={32}
-                        className="animate-spin text-emerald-600"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <h3 className="text-base font-extrabold text-slate-900">
-                        Generating Resume Report...
-                      </h3>
-                      <p className="text-xs text-slate-500 leading-relaxed">
-                        Analyzing your resume against target role requirements
-                        and calculating ATS scores.
-                      </p>
-                    </div>
-                    <div className="pt-2 flex items-center justify-center gap-2 text-[11px] font-bold text-emerald-600 bg-emerald-50 py-2 rounded-xl border border-emerald-100">
-                      <span> ⏳ AI agent is processing your request...</span>
-                    </div>
-                  </div>
+                 <div className="bg-white/90 backdrop-blur-md rounded-3xl p-7 shadow-xl shadow-emerald-950/5 border border-emerald-100 max-w-sm w-full text-center space-y-5 relative overflow-hidden">
+  {/* Top Subtle Glow Highlight */}
+  <div className="absolute top-0 left-1/2 -translate-x-1/2 w-40 h-1 bg-gradient-to-r from-transparent via-[#00875A] to-transparent rounded-full opacity-60" />
+
+  {/* Spinner Section with Pulsing Ring */}
+  <div className="relative w-16 h-16 mx-auto flex items-center justify-center">
+    <div className="absolute inset-0 rounded-2xl bg-emerald-100/60 animate-ping opacity-25" />
+    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-50 to-emerald-100/80 text-[#00875A] flex items-center justify-center shadow-inner border border-emerald-200/50">
+      <Loader2 size={30} className="animate-spin text-[#00875A]" />
+    </div>
+  </div>
+
+  {/* Main Text Content */}
+  <div className="space-y-3 text-left">
+  <div>
+    <h3 className="text-lg font-black text-gray-900 tracking-tight text-center">
+      AI Resume Analysis in Progress
+    </h3>
+    <p className="text-xs text-gray-500 leading-relaxed font-medium text-center mt-1">
+      Your resume is being evaluated across multiple factors including:
+    </p>
+  </div>
+
+  <div className="bg-emerald-50/50 rounded-2xl p-3.5 border border-emerald-100/60 space-y-2 text-xs font-semibold text-gray-700">
+    <div className="flex items-center gap-2.5">
+      <div className="w-5 h-5 rounded-full bg-emerald-100 text-[#00875A] flex items-center justify-center shrink-0 text-[10px] font-bold">
+        ✓
+      </div>
+      <span>ATS Compatibility</span>
+    </div>
+
+    <div className="flex items-center gap-2.5">
+      <div className="w-5 h-5 rounded-full bg-emerald-100 text-[#00875A] flex items-center justify-center shrink-0 text-[10px] font-bold">
+        ✓
+      </div>
+      <span>Skills Match</span>
+    </div>
+
+    <div className="flex items-center gap-2.5">
+      <div className="w-5 h-5 rounded-full bg-emerald-100 text-[#00875A] flex items-center justify-center shrink-0 text-[10px] font-bold">
+        ✓
+      </div>
+      <span>Improvement Suggestions</span>
+    </div>
+  </div>
+</div>
+</div>
                 </motion.div>
               )}
             </AnimatePresence>
 
-            {/* TOP BANNER & SCORE METRICS */}
+            {/* TOP WELCOME BANNER & STAT CARDS */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
               <WelcomeBanner
                 user={user}
+                profiles={profiles}
                 activeProfile={activeProfile}
+                onSelectProfile={handleSelectProfile}
                 generating={generating}
                 onGenerateNewReport={handleGenerateNewReport}
+                navigate={navigate}
               />
               <StatCards
                 latestAtsScore={latestAtsScore}
@@ -305,7 +350,7 @@ const Dashboard = () => {
               />
             </div>
 
-            {/* MIDDLE GRID: GRAPH + PAST REPORTS LIST */}
+            {/* MIDDLE GRID: SCORE GRAPH + PAST REPORTS LIST */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
               <ScoreHistoryGraph
                 loading={loading}
@@ -322,7 +367,45 @@ const Dashboard = () => {
               />
             </div>
 
-            {/* BOTTOM SECTION RIGHT HERE ON DASHBOARD: FULL AI REPORT */}
+            {/* FIRST REPORT PROMPT BANNER WHEN NO REPORTS CREATED YET */}
+            {formattedReports.length === 0 && (
+              <div className="bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-slate-900/5 border border-emerald-500/20 rounded-3xl p-6 sm:p-8 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-xs">
+                <div className="space-y-1 text-center sm:text-left">
+                  <h3 className="text-base sm:text-lg font-black text-slate-900 flex items-center justify-center sm:justify-start gap-2">
+                   
+                    <span>Ready to evaluate your resume profile?</span>
+                  </h3>
+                  <p className="text-xs text-slate-600 font-medium">
+                    Generate your first AI interview report for{" "}
+                    <span className="font-bold text-emerald-800">
+                      {activeProfile?.name ? `${activeProfile.name} (${activeProfile?.targetRole || "Role"})` : activeProfile?.targetRole || "your target role"}
+                    </span>{" "}
+                    to calculate ATS match scores, skill gap analysis, and practice questions.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  disabled={generating}
+                  onClick={handleGenerateNewReport}
+                  className="px-6 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-extrabold text-xs shadow-lg shadow-emerald-600/20 transition flex items-center justify-center gap-2 cursor-pointer shrink-0 disabled:opacity-50"
+                >
+                  {generating ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      <span>Analyzing...</span>
+                    </>
+                  ) : (
+                    <>
+                      <PlusCircle size={16} />
+                      <span>Generate First Report</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+
+            {/* BOTTOM SECTION: FULL AI REPORT DETAILS */}
             {activeReport && (
               <ReportDetailsView
                 activeReport={activeReport}

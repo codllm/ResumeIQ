@@ -28,6 +28,7 @@ const CreateNewProfile = ({ onSubmit,setnewprofilestate }) => {
 
   // Form State
   const [formData, setFormData] = useState({
+    name: "",
     resumeFile: null,
     resumeText: "",
     jobDescription: "",
@@ -52,7 +53,7 @@ const CreateNewProfile = ({ onSubmit,setnewprofilestate }) => {
 
     try {
       const fd = new FormData();
-      fd.append("name", finalData.targetRole?.trim() || "Career Profile");
+      fd.append("name", finalData.name?.trim() || finalData.targetRole?.trim() || "Career Profile");
       fd.append("targetRole", finalData.targetRole?.trim() || "");
       fd.append("jobDescription", finalData.jobDescription?.trim() || "");
       fd.append("selfDescription", finalData.selfDescription?.trim() || "");
@@ -65,9 +66,7 @@ const CreateNewProfile = ({ onSubmit,setnewprofilestate }) => {
       const res = await createCareerProfile(fd, token);
       if (res.success) {
         setSuccessMsg("Career profile created successfully! Redirecting to dashboard...");
-        setTimeout(() => {
-          navigate("/dashboard");
-        }, 1000);
+        setnewprofilestate(false)
       } else {
         setError(res.message || "Failed to create career profile. Please try again.");
       }
@@ -356,7 +355,7 @@ const CreateNewProfile = ({ onSubmit,setnewprofilestate }) => {
                     </motion.div>
                   )}
 
-                  {/* STEP 4: TARGET ROLE TITLE */}
+                  {/* STEP 4: PROFILE NAME & TARGET ROLE */}
                   {step === 4 && (
                     <motion.div
                       key="step4"
@@ -371,24 +370,39 @@ const CreateNewProfile = ({ onSubmit,setnewprofilestate }) => {
                           Final Step
                         </div>
                         <h2 className="text-xl font-black text-slate-900 tracking-tight">
-                          Target Job Title
+                          Profile Details
                         </h2>
                         <p className="text-xs text-slate-500 mt-0.5">
-                          Provide your specific targeted role title for precision preparation indexing.
+                          Name your profile and specify your target role title for indexing.
                         </p>
                       </div>
 
-                      <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                          Desired Role Title
-                        </label>
-                        <input
-                          type="text"
-                          value={formData.targetRole}
-                          onChange={(e) => updateField("targetRole", e.target.value)}
-                          placeholder="e.g., Senior Frontend Engineer"
-                          className="w-full h-11 px-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-900 placeholder-slate-400 outline-none focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-500/10 transition"
-                        />
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                            Profile Name
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.name}
+                            onChange={(e) => updateField("name", e.target.value)}
+                            placeholder="e.g., Google Frontend Profile"
+                            className="w-full h-11 px-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-900 placeholder-slate-400 outline-none focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-500/10 transition"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                            Desired Role Title
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.targetRole}
+                            onChange={(e) => updateField("targetRole", e.target.value)}
+                            placeholder="e.g., Senior Frontend Engineer"
+                            className="w-full h-11 px-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-900 placeholder-slate-400 outline-none focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-500/10 transition"
+                          />
+                        </div>
                       </div>
                     </motion.div>
                   )}

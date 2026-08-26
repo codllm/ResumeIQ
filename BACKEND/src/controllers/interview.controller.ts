@@ -530,7 +530,7 @@ export const InterviewController = async (req: Request, res: Response): Promise<
     console.error("Error in InterviewController:", error);
     res.status(500).json({
       success: false,
-      message: "Failed to generate or save interview report.",
+      message: "Our AI is currently experiencing high traffic. Please try again in a few moments.",
       error: error.message || error,
     });
   }

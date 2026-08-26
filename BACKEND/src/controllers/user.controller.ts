@@ -124,22 +124,32 @@ export const createUserController = async (
   }
 };
 
-export const logoutController = async(req:Request,res:Response)=>{
-  try{
-
+export const logoutController = async (req: Request, res: Response) => {
+  try {
     const token = req.headers.authorization?.split(" ")[1];
 
-    await BlacklistTokenModel.create({token});
+    if (!token) {
+      return res.status(400).json({
+        success: false,
+        message: "Authorization token is missing.",
+      });
+    }
 
-    if(token) res.status(200).json({success:true,message:"Logout successful."});
-  }catch(error){
+    await BlacklistTokenModel.create({ token });
+
+    return res.status(200).json({
+      success: true,
+      message: "Logout successful.",
+    });
+  } catch (error) {
     console.error("Logout Error:", error);
-    res.status(500).json({
+
+    return res.status(500).json({
       success: false,
       message: "Logout failed.",
     });
   }
-}
+};
 
 export const getMeController = async(req:Request,res:Response)=>{
 

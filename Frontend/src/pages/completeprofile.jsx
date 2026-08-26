@@ -32,6 +32,7 @@ const CompleteProfilePage = ({ onSubmit }) => {
 
   // Form State
   const [formData, setFormData] = useState({
+    name: "",
     resumeFile: null,
     resumeText: "",
     jobDescription: "",
@@ -56,7 +57,7 @@ const CompleteProfilePage = ({ onSubmit }) => {
 
     try {
       const fd = new FormData();
-      fd.append("name", finalData.targetRole?.trim() || "Career Profile");
+      fd.append("name", finalData.name?.trim() || finalData.targetRole?.trim() || "Career Profile");
       fd.append("targetRole", finalData.targetRole?.trim() || "");
       fd.append("jobDescription", finalData.jobDescription?.trim() || "");
       fd.append("selfDescription", finalData.selfDescription?.trim() || "");
@@ -380,7 +381,7 @@ const CompleteProfilePage = ({ onSubmit }) => {
                   </motion.div>
                 )}
 
-                {/* STEP 4: TARGET ROLE TITLE */}
+                {/* STEP 4: PROFILE NAME & TARGET ROLE */}
                 {step === 4 && (
                   <motion.div
                     key="step4"
@@ -395,24 +396,39 @@ const CompleteProfilePage = ({ onSubmit }) => {
                         Final Step
                       </div>
                       <h2 className="text-2xl font-black text-slate-900 tracking-tight">
-                        Target Job Title
+                        Profile Details
                       </h2>
                       <p className="text-xs text-slate-500 mt-1">
-                        Provide your specific targeted role title for precision preparation indexing.
+                        Name your profile and specify your target role title for precision indexing.
                       </p>
                     </div>
 
-                    <div className="pt-2">
-                      <label className="block text-xs font-bold text-slate-700 mb-2">
-                        Desired Role Title
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.targetRole}
-                        onChange={(e) => updateField("targetRole", e.target.value)}
-                        placeholder="e.g., Senior Frontend Engineer"
-                        className="w-full h-12 px-4 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-900 placeholder-slate-400 outline-none focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-500/10 transition"
-                      />
+                    <div className="pt-2 space-y-4">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-2">
+                          Profile Name
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.name}
+                          onChange={(e) => updateField("name", e.target.value)}
+                          placeholder="e.g., Google Frontend Profile"
+                          className="w-full h-12 px-4 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-900 placeholder-slate-400 outline-none focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-500/10 transition"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-2">
+                          Desired Role Title
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.targetRole}
+                          onChange={(e) => updateField("targetRole", e.target.value)}
+                          placeholder="e.g., Senior Frontend Engineer"
+                          className="w-full h-12 px-4 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-900 placeholder-slate-400 outline-none focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-500/10 transition"
+                        />
+                      </div>
                     </div>
                   </motion.div>
                 )}

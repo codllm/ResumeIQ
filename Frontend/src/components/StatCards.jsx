@@ -1,7 +1,9 @@
 import React from "react";
 import { Gauge, Layers3, SearchCheck, TrendingUp } from "lucide-react";
 
-const StatCards = ({ latestAtsScore = 78, latestSkillMatch = 70, latestKeywordMatch = 83 }) => {
+const StatCards = ({ latestAtsScore = 0, latestSkillMatch = 0, latestKeywordMatch = 0 }) => {
+  const hasScores = latestAtsScore > 0 || latestSkillMatch > 0 || latestKeywordMatch > 0;
+
   const metrics = [
     {
       label: "Skill Alignment",
@@ -10,7 +12,7 @@ const StatCards = ({ latestAtsScore = 78, latestSkillMatch = 70, latestKeywordMa
       color: "#0d9488",
       bg: "bg-teal-50",
       text: "text-teal-700",
-      status: latestSkillMatch >= 80 ? "Strong" : latestSkillMatch >= 65 ? "Needs Focus" : "Priority",
+      status: hasScores ? (latestSkillMatch >= 80 ? "Strong" : latestSkillMatch >= 65 ? "Needs Focus" : "Priority") : "No Scans",
     },
     {
       label: "Keyword Match",
@@ -19,12 +21,12 @@ const StatCards = ({ latestAtsScore = 78, latestSkillMatch = 70, latestKeywordMa
       color: "#4f46e5",
       bg: "bg-indigo-50",
       text: "text-indigo-700",
-      status: latestKeywordMatch >= 80 ? "Optimal" : latestKeywordMatch >= 65 ? "Good" : "Low",
+      status: hasScores ? (latestKeywordMatch >= 80 ? "Optimal" : latestKeywordMatch >= 65 ? "Good" : "Low") : "No Scans",
     },
   ];
 
-  const atsStatus = latestAtsScore >= 85 ? "Excellent" : latestAtsScore >= 70 ? "Good" : "Improve";
-  const averageScore = Math.round((latestAtsScore + latestSkillMatch + latestKeywordMatch) / 3);
+  const atsStatus = hasScores ? (latestAtsScore >= 85 ? "Excellent" : latestAtsScore >= 70 ? "Good" : "Improve") : "Pending";
+  const averageScore = hasScores ? Math.round((latestAtsScore + latestSkillMatch + latestKeywordMatch) / 3) : 0;
 
   return (
     <div className="lg:col-span-7 bg-white border border-slate-200/90 rounded-3xl p-5 shadow-xs">

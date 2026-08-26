@@ -18,6 +18,8 @@ const router = Router();
 
 // POST /api/ai/generate-interview-report
 router.post("/generate-interview-report", authenticateToken, upload.single("resume"), InterviewController);
+router.get("/reports", authenticateToken, getInterviewReportsController);
+router.get("/reports/:reportId", authenticateToken, getInterviewReportsController);
 router.get("/all-reports", authenticateToken, getInterviewReportsController);
 router.get("/report/:reportId", authenticateToken, getInterviewReportsController);
 

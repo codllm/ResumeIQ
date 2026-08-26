@@ -104,7 +104,16 @@ const ScoreHistoryGraph = ({
     [formattedReports]
   );
 
+  const activeScoreCard = useMemo(() => {
+    if (formattedReports.length === 0) {
+      return emptyScoreCard;
+    }
+    return scoreCard;
+  }, [formattedReports.length, scoreCard]);
+
   const chartData = useMemo(() => {
+    if (formattedReports.length === 0) return [];
+
     const pointsByDate = new Map();
 
     const addPoint = (entry, dataKey) => {
@@ -124,49 +133,56 @@ const ScoreHistoryGraph = ({
     };
 
     const resumeEntries =
-      scoreCard.resumeReportCard.length > 0
-        ? scoreCard.resumeReportCard
+      activeScoreCard.resumeReportCard.length > 0
+        ? activeScoreCard.resumeReportCard
         : fallbackHistory;
 
     resumeEntries.forEach((entry) => addPoint(entry, "reportScore"));
-    scoreCard.mocktestReportCard.forEach((entry) => addPoint(entry, "mockTestScore"));
-    scoreCard.mockInterviewReportCard.forEach((entry) => addPoint(entry, "mockInterviewScore"));
+    activeScoreCard.mocktestReportCard.forEach((entry) => addPoint(entry, "mockTestScore"));
+    activeScoreCard.mockInterviewReportCard.forEach((entry) => addPoint(entry, "mockInterviewScore"));
 
     return Array.from(pointsByDate.values()).sort((a, b) => a.timestamp - b.timestamp);
-  }, [fallbackHistory, scoreCard]);
+  }, [activeScoreCard, fallbackHistory, formattedReports.length]);
 
   const latestScores = useMemo(() => {
+    if (formattedReports.length === 0) {
+      return { reportScore: null, mockTestScore: null, mockInterviewScore: null };
+    }
+
     const reportScoreValue = getLatestNumber(
-      scoreCard.resumeReportCard.length > 0 ? scoreCard.resumeReportCard : fallbackHistory
+      activeScoreCard.resumeReportCard.length > 0 ? activeScoreCard.resumeReportCard : fallbackHistory
     );
-    const mockTestScoreValue = getLatestNumber(scoreCard.mocktestReportCard);
-    const mockInterviewScoreValue = getLatestNumber(scoreCard.mockInterviewReportCard);
+    const mockTestScoreValue = getLatestNumber(activeScoreCard.mocktestReportCard);
+    const mockInterviewScoreValue = getLatestNumber(activeScoreCard.mockInterviewReportCard);
 
     return {
       reportScore: reportScoreValue,
       mockTestScore: mockTestScoreValue,
       mockInterviewScore: mockInterviewScoreValue,
     };
-  }, [fallbackHistory, scoreCard]);
+  }, [activeScoreCard, fallbackHistory, formattedReports.length]);
 
   const readinessScore = useMemo(() => {
+    if (formattedReports.length === 0) return 0;
     const values = Object.values(latestScores).filter((score) => typeof score === "number");
     if (values.length === 0) return 0;
 
     return Number((values.reduce((sum, score) => sum + score, 0) / values.length).toFixed(1));
-  }, [latestScores]);
+  }, [formattedReports.length, latestScores]);
 
   const allScores = useMemo(
-    () =>
-      [
-        ...scoreCard.resumeReportCard,
-        ...scoreCard.mocktestReportCard,
-        ...scoreCard.mockInterviewReportCard,
-        ...(scoreCard.resumeReportCard.length > 0 ? [] : fallbackHistory),
+    () => {
+      if (formattedReports.length === 0) return [];
+      return [
+        ...activeScoreCard.resumeReportCard,
+        ...activeScoreCard.mocktestReportCard,
+        ...activeScoreCard.mockInterviewReportCard,
+        ...(activeScoreCard.resumeReportCard.length > 0 ? [] : fallbackHistory),
       ]
         .map((entry) => Number(entry.score))
-        .filter((score) => Number.isFinite(score)),
-    [fallbackHistory, scoreCard]
+        .filter((score) => Number.isFinite(score));
+    },
+    [activeScoreCard, fallbackHistory, formattedReports.length]
   );
 
   const distributionData = useMemo(() => {
@@ -178,20 +194,19 @@ const ScoreHistoryGraph = ({
       active: false,
     }));
 
+    if (allScores.length === 0) {
+      return buckets;
+    }
+
     allScores.forEach((score) => {
       const index = Math.min(9, Math.max(0, Math.floor(score / 10)));
       buckets[index].count += 1;
     });
 
-    if (allScores.length > 0) {
-      const activeIndex = Math.min(9, Math.max(0, Math.floor(readinessScore / 10)));
-      buckets[activeIndex].active = true;
-    }
+    const activeIndex = Math.min(9, Math.max(0, Math.floor(readinessScore / 10)));
+    buckets[activeIndex].active = true;
 
-    return buckets.map((bucket) => ({
-      ...bucket,
-      count: Math.max(bucket.count, bucket.active ? 1 : 0),
-    }));
+    return buckets;
   }, [allScores, readinessScore]);
 
   const readinessPercentile = useMemo(() => {
@@ -207,10 +222,12 @@ const ScoreHistoryGraph = ({
 
   const totalScoreEntries = useMemo(
     () =>
-      scoreCard.resumeReportCard.length +
-      scoreCard.mocktestReportCard.length +
-      scoreCard.mockInterviewReportCard.length,
-    [scoreCard]
+      formattedReports.length === 0
+        ? 0
+        : activeScoreCard.resumeReportCard.length +
+          activeScoreCard.mocktestReportCard.length +
+          activeScoreCard.mockInterviewReportCard.length || formattedReports.length,
+    [activeScoreCard, formattedReports.length]
   );
 
   const trendText = useMemo(() => {
@@ -218,7 +235,8 @@ const ScoreHistoryGraph = ({
       .map((entry) => entry.reportScore)
       .filter((score) => typeof score === "number");
 
-    if (reportScores.length < 2) return "Generate more results to compare score trends.";
+    if (reportScores.length === 0) return "No score history recorded yet.";
+    if (reportScores.length < 2) return "Generate more reports to compare trends.";
 
     const firstScore = reportScores[0];
     const latestScore = reportScores[reportScores.length - 1];
@@ -253,8 +271,12 @@ const ScoreHistoryGraph = ({
               Loading score history...
             </div>
           ) : chartData.length === 0 ? (
-            <div className="h-full flex items-center justify-center text-xs font-bold text-slate-500">
-              No score history yet.
+            <div className="h-full flex flex-col items-center justify-center text-center p-4 border-2 border-dashed border-slate-100 rounded-2xl bg-slate-50/50 space-y-1.5">
+              <BarChart3 size={28} className="text-slate-300 stroke-[1.5]" />
+              <p className="text-xs font-extrabold text-slate-600">No Score History Available</p>
+              <p className="text-[11px] text-slate-400 font-medium max-w-xs leading-relaxed">
+                Generate your first report to start tracking your score growth over time.
+              </p>
             </div>
           ) : (
             <ResponsiveContainer width="100%" height="100%">

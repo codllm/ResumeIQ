@@ -1,7 +1,15 @@
 import React from "react";
-import { PlusCircle, Target } from "lucide-react";
+import { PlusCircle, Target, ChevronDown, CheckCircle2 } from "lucide-react";
 
-const WelcomeBanner = ({ user, activeProfile, generating, onGenerateNewReport }) => {
+const WelcomeBanner = ({
+  user,
+  profiles = [],
+  activeProfile,
+  onSelectProfile,
+  generating,
+  onGenerateNewReport,
+  navigate,
+}) => {
   return (
     <div className="lg:col-span-12 relative overflow-hidden bg-gradient-to-r from-[#072d27] via-[#093c33] to-[#041d19] rounded-3xl p-4 text-white shadow-xl flex flex-col md:flex-row items-center justify-between min-h-[220px]">
       {/* Background Decorative Rings */}
@@ -10,21 +18,43 @@ const WelcomeBanner = ({ user, activeProfile, generating, onGenerateNewReport })
 
       {/* Left Content */}
       <div className="z-10 space-y-4 max-w-xl">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-[11px] font-bold tracking-wider uppercase">
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-          TARGET PROFILE ACTIVE
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-[11px] font-bold tracking-wider uppercase">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            TARGET PROFILE ACTIVE
+          </div>
+
+          {/* Profile Selection Dropdown */}
+          {profiles.length > 0 && (
+            <div className="relative inline-block">
+              <select
+                value={activeProfile?._id || ""}
+                onChange={(e) => {
+                  if (e.target.value === "new") {
+                    if (navigate) navigate("/create-new-profile");
+                  } else if (onSelectProfile) {
+                    onSelectProfile(e.target.value);
+                  }
+                }}
+                className="bg-emerald-950/90 hover:bg-emerald-900 text-emerald-200 text-[11px] font-bold py-1 pl-3 pr-7 rounded-full border border-emerald-400/40 outline-none cursor-pointer appearance-none transition shadow-sm"
+              >
+                {profiles.map((p) => (
+                  <option key={p._id} value={p._id} className="bg-slate-900 text-white font-medium">
+                    {p.name || p.targetRole || "Career Profile"} {p.targetRole ? `(${p.targetRole})` : ""}
+                  </option>
+                ))}
+               
+              </select>
+              <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-emerald-400 pointer-events-none" />
+            </div>
+          )}
         </div>
 
         <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
-          Welcome back, {user?.name?.toUpperCase() || "NISHANT NIKHIL"}! 👋
+          Welcome back, {user?.username?.toUpperCase() || user?.name?.toUpperCase() || "USER"}! 👋
         </h1>
 
-        <p className="text-xs text-emerald-100/70 font-medium">
-          Ready to evaluate your resume against your target role:
-          <span className="block text-emerald-300 font-bold text-sm mt-0.5">
-            {activeProfile?.targetRole || activeProfile?.name || "Software Developer 2 (SD2)"}
-          </span>
-        </p>
+        
 
         <button
           onClick={onGenerateNewReport}

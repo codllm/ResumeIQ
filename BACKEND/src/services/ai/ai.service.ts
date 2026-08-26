@@ -199,14 +199,14 @@ Rules:
     const parsed = JSON.parse(text);
     return sanitizeInterviewReport(parsed);
   } catch (error: any) {
-    const isQuotaError = error.status === 429 || (error.message && error.message.includes("429"));
+    const isQuotaError = error.status === 429 || (error.message && (error.message.includes("429") || error.message.toLowerCase().includes("quota")));
     if (isQuotaError) {
-      console.warn("Gemini API Quota Exceeded (429).");
-      throw new Error("Gemini API Quota Exceeded (429). Please update GOOGLE_GENAI_API_KEY in .env");
+      console.warn("Gemini API Quota / High Traffic Exceeded.");
+      throw new Error("Our AI is currently experiencing high traffic. Please try again in a few moments.");
     }
 
     console.error("Gemini AI API Error:", error.message || error);
-    throw error;
+    throw new Error("Our AI is currently experiencing high traffic. Please try again in a few moments.");
   }
 }
 
