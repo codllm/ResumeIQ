@@ -315,3 +315,22 @@ export const updateCareerProfileApi = async (profileId, data, token, isFormData 
   }
 };
 
+export async function getassessmentreports(token, profileId) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/ai/oa-reports?careerProfileId=${profileId}`, {
+      method: "GET",
+      headers: getHeaders(token),
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch assessment reports");
+    }
+
+    const data = await response.json();
+    return data.oaReports || [];
+  } catch (error) {
+    console.error("Error in getassessmentreports:", error);
+    return [];
+  }
+}
+

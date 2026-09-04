@@ -2,11 +2,11 @@ import React, { useState,useContext } from "react";
 import { Search, Bell, ChevronDown, User, Settings, LogOut } from "lucide-react";
 import {logoutUserApi} from "../api/user.api"
 import { Navigate, useNavigate,} from "react-router";
-import {userContext} from "../context/user.context"
+import {UserContext} from "../context/user.context"
 
 const Header = ({ user}) => {
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const {setUser} = useContext(userContext)
+  const {setUser} = useContext(UserContext)
 
   const initial = user?.username?.charAt(0).toUpperCase() || "N";
   const username = user?.username || "Nishant Nikhil";

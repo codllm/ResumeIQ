@@ -16,6 +16,7 @@ import {
   getInterviewReportsApi,
   generateInterviewReportApi,
 } from "../api/user.api";
+import AssessmentReport from "../pages/AssessmentReport"
 
 // Import Modular Components
 import Sidebar from "../components/Sidebar";
@@ -27,7 +28,7 @@ import PastReportsList from "../components/PastReportsList";
 import ReportDetailsView from "../components/ReportDetailsView";
 import StartInterview from "../components/startInterview";
 import StartOnlineAssessment from "../components/StartOnlineAssessment";
-import UpdateCarrierProfile from "../pages/UpdateCarrierProfile"
+import UpdateCarrierProfile from "../pages/UpdateCarrierProfile";
 const Dashboard = () => {
   const { user, token, logout } = useUser();
   const navigate = useNavigate();
@@ -134,11 +135,11 @@ const Dashboard = () => {
 
   // Latest metrics for top cards
   const latestAtsScore =
-    formattedReports.length > 0 ? formattedReports[0].atsScore : 78;
+    formattedReports.length > 0 ? formattedReports[0].atsScore : 0;
   const latestSkillMatch =
-    formattedReports.length > 0 ? formattedReports[0].skillMatch : 70;
+    formattedReports.length > 0 ? formattedReports[0].skillMatch : 0;
   const latestKeywordMatch =
-    formattedReports.length > 0 ? formattedReports[0].keywordMatch : 83;
+    formattedReports.length > 0 ? formattedReports[0].keywordMatch : 0;
 
   const handleGenerateNewReport = async () => {
     if (!activeProfile) {
@@ -157,7 +158,10 @@ const Dashboard = () => {
       );
       if (res.success && res.report) {
         setSuccessMsg("New AI interview report generated successfully!");
-        setReports((prev) => [res.report, ...prev.filter((r) => r._id !== res.report._id)]);
+        setReports((prev) => [
+          res.report,
+          ...prev.filter((r) => r._id !== res.report._id),
+        ]);
         await fetchDashboardData();
 
         const newFormatted = {
@@ -194,7 +198,9 @@ const Dashboard = () => {
         );
       }
     } catch (err) {
-      setError("Our AI is currently experiencing high traffic. Please try again in a few moments.");
+      setError(
+        "Our AI is currently experiencing high traffic. Please try again in a few moments."
+      );
     } finally {
       setGenerating(false);
     }
@@ -267,9 +273,8 @@ const Dashboard = () => {
           </div>
         )}
 
-        {/* ---------------------------------------------------- */}
         {/* VIEW 1: DASHBOARD TAB (OVERVIEW + REPORT BELOW)       */}
-        {/* ---------------------------------------------------- */}
+
         {activeNav === "dashboard" && (
           <main className="p-8 max-w-7xl w-full mx-auto space-y-6 relative min-h-[500px]">
             {/* LOCAL GENERATING OVERLAY (SCOPED ONLY TO MAIN CONTENT) */}
@@ -281,53 +286,57 @@ const Dashboard = () => {
                   exit={{ opacity: 0 }}
                   className="absolute inset-0 bg-slate-900/30 backdrop-blur-sm z-30 flex items-center justify-center p-4 rounded-3xl"
                 >
-                 <div className="bg-white/90 backdrop-blur-md rounded-3xl p-7 shadow-xl shadow-emerald-950/5 border border-emerald-100 max-w-sm w-full text-center space-y-5 relative overflow-hidden">
-  {/* Top Subtle Glow Highlight */}
-  <div className="absolute top-0 left-1/2 -translate-x-1/2 w-40 h-1 bg-gradient-to-r from-transparent via-[#00875A] to-transparent rounded-full opacity-60" />
+                  <div className="bg-white/90 backdrop-blur-md rounded-3xl p-7 shadow-xl shadow-emerald-950/5 border border-emerald-100 max-w-sm w-full text-center space-y-5 relative overflow-hidden">
+                    {/* Top Subtle Glow Highlight */}
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-40 h-1 bg-gradient-to-r from-transparent via-[#00875A] to-transparent rounded-full opacity-60" />
 
-  {/* Spinner Section with Pulsing Ring */}
-  <div className="relative w-16 h-16 mx-auto flex items-center justify-center">
-    <div className="absolute inset-0 rounded-2xl bg-emerald-100/60 animate-ping opacity-25" />
-    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-50 to-emerald-100/80 text-[#00875A] flex items-center justify-center shadow-inner border border-emerald-200/50">
-      <Loader2 size={30} className="animate-spin text-[#00875A]" />
-    </div>
-  </div>
+                    {/* Spinner Section with Pulsing Ring */}
+                    <div className="relative w-16 h-16 mx-auto flex items-center justify-center">
+                      <div className="absolute inset-0 rounded-2xl bg-emerald-100/60 animate-ping opacity-25" />
+                      <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-50 to-emerald-100/80 text-[#00875A] flex items-center justify-center shadow-inner border border-emerald-200/50">
+                        <Loader2
+                          size={30}
+                          className="animate-spin text-[#00875A]"
+                        />
+                      </div>
+                    </div>
 
-  {/* Main Text Content */}
-  <div className="space-y-3 text-left">
-  <div>
-    <h3 className="text-lg font-black text-gray-900 tracking-tight text-center">
-      AI Resume Analysis in Progress
-    </h3>
-    <p className="text-xs text-gray-500 leading-relaxed font-medium text-center mt-1">
-      Your resume is being evaluated across multiple factors including:
-    </p>
-  </div>
+                    {/* Main Text Content */}
+                    <div className="space-y-3 text-left">
+                      <div>
+                        <h3 className="text-lg font-black text-gray-900 tracking-tight text-center">
+                          AI Resume Analysis in Progress
+                        </h3>
+                        <p className="text-xs text-gray-500 leading-relaxed font-medium text-center mt-1">
+                          Your resume is being evaluated across multiple factors
+                          including:
+                        </p>
+                      </div>
 
-  <div className="bg-emerald-50/50 rounded-2xl p-3.5 border border-emerald-100/60 space-y-2 text-xs font-semibold text-gray-700">
-    <div className="flex items-center gap-2.5">
-      <div className="w-5 h-5 rounded-full bg-emerald-100 text-[#00875A] flex items-center justify-center shrink-0 text-[10px] font-bold">
-        ✓
-      </div>
-      <span>ATS Compatibility</span>
-    </div>
+                      <div className="bg-emerald-50/50 rounded-2xl p-3.5 border border-emerald-100/60 space-y-2 text-xs font-semibold text-gray-700">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-5 h-5 rounded-full bg-emerald-100 text-[#00875A] flex items-center justify-center shrink-0 text-[10px] font-bold">
+                            ✓
+                          </div>
+                          <span>ATS Compatibility</span>
+                        </div>
 
-    <div className="flex items-center gap-2.5">
-      <div className="w-5 h-5 rounded-full bg-emerald-100 text-[#00875A] flex items-center justify-center shrink-0 text-[10px] font-bold">
-        ✓
-      </div>
-      <span>Skills Match</span>
-    </div>
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-5 h-5 rounded-full bg-emerald-100 text-[#00875A] flex items-center justify-center shrink-0 text-[10px] font-bold">
+                            ✓
+                          </div>
+                          <span>Skills Match</span>
+                        </div>
 
-    <div className="flex items-center gap-2.5">
-      <div className="w-5 h-5 rounded-full bg-emerald-100 text-[#00875A] flex items-center justify-center shrink-0 text-[10px] font-bold">
-        ✓
-      </div>
-      <span>Improvement Suggestions</span>
-    </div>
-  </div>
-</div>
-</div>
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-5 h-5 rounded-full bg-emerald-100 text-[#00875A] flex items-center justify-center shrink-0 text-[10px] font-bold">
+                            ✓
+                          </div>
+                          <span>Improvement Suggestions</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -372,15 +381,19 @@ const Dashboard = () => {
               <div className="bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-slate-900/5 border border-emerald-500/20 rounded-3xl p-6 sm:p-8 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-xs">
                 <div className="space-y-1 text-center sm:text-left">
                   <h3 className="text-base sm:text-lg font-black text-slate-900 flex items-center justify-center sm:justify-start gap-2">
-                   
                     <span>Ready to evaluate your resume profile?</span>
                   </h3>
                   <p className="text-xs text-slate-600 font-medium">
                     Generate your first AI interview report for{" "}
                     <span className="font-bold text-emerald-800">
-                      {activeProfile?.name ? `${activeProfile.name} (${activeProfile?.targetRole || "Role"})` : activeProfile?.targetRole || "your target role"}
+                      {activeProfile?.name
+                        ? `${activeProfile.name} (${
+                            activeProfile?.targetRole || "Role"
+                          })`
+                        : activeProfile?.targetRole || "your target role"}
                     </span>{" "}
-                    to calculate ATS match scores, skill gap analysis, and practice questions.
+                    to calculate ATS match scores, skill gap analysis, and
+                    practice questions.
                   </p>
                 </div>
 
@@ -416,9 +429,8 @@ const Dashboard = () => {
           </main>
         )}
 
-        {/* ---------------------------------------------------- */}
         {/* VIEW 2: RESUME REPORTS TAB (ALL PAST REPORTS LIST)   */}
-        {/* ---------------------------------------------------- */}
+
         {activeNav === "reports" && (
           <main className="p-8 max-w-7xl w-full mx-auto space-y-6 relative min-h-[500px]">
             {/* LOCAL GENERATING OVERLAY (SCOPED ONLY TO REPORT PAGE CONTENT) */}
@@ -554,14 +566,24 @@ const Dashboard = () => {
         )}
         {activeNav === "interview" && (
           <div>
-            <StartInterview activeProfile={activeProfile} activeReport={activeReport} />
+            <StartInterview
+              activeProfile={activeProfile}
+              activeReport={activeReport}
+            />
           </div>
         )}
-        {activeNav==="settings" && (
+        {activeNav === "settings" && (
           <div>
-            <UpdateCarrierProfile/>
+            <UpdateCarrierProfile />
           </div>
         )}
+        {
+          activeNav === "oareports" && (
+            <div>
+              <AssessmentReport/>
+            </div>
+          )
+        }
       </div>
     </div>
   );

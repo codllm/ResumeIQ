@@ -17,7 +17,7 @@ import {
   Zap,
   UploadCloud,
 } from "lucide-react";
-import { useUser,userContext } from "../context/user.context";
+import { useUser} from "../context/user.context";
 import { userLogin, userRegister } from "../api/user.api";
 
 
@@ -168,9 +168,9 @@ const Landing = () => {
             <span>AI Resume Checker & Prep</span>
           </div>
 
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-slate-900 tracking-tight leading-[1.12]">
-            Is your resume <br className="hidden sm:inline" />
-            <span className="text-slate-900">good enough?</span>
+          <h1 className="text-4xl sm:text-4xl lg:text-6xl font-extrabold text-slate-900 tracking-tight leading-[1.12]">
+            Turn your resume into a <br className="hidden sm:inline" />
+            <span className="text-slate-900">roadmap for your</span> <br className="hidden sm:inline" /> <span className="text-emerald-500">Dream Job</span>
           </h1>
 
           <p className="text-slate-600 text-base sm:text-lg leading-relaxed max-w-xl">
@@ -321,7 +321,7 @@ const Landing = () => {
               {/* Submit Button */}
               <button
                 type="submit"
-                disablsed={submitting}
+                disabled={submitting}
                 className="w-full h-11 mt-2 flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl shadow-md shadow-emerald-500/20 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {submitting ? (

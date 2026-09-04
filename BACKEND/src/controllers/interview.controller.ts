@@ -18,6 +18,7 @@ import {
 import MOCKInterview from "../model/mockInterview.model";
 import MockInterviewSession from "../model/mockInterviewSession.model";
 import User from "../model/user.model";
+import { success } from "zod";
 
 
 const pdfParseModule = require("pdf-parse");
@@ -1500,5 +1501,41 @@ export const mockInterviewAudioController = async (
       message: "Failed to get audio",
       error: error.message,
     });
+  }
+};
+
+export const onlineAssessmentReport = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = getAuthenticatedUserId(req);
+    const profileID = String(req.body?.profileID || req.query?.careerProfileId || req.query?.profileID || "");
+
+    if (!profileID || !mongoose.isValidObjectId(profileID)) {
+      res.status(400).json({ success: false, message: "Valid profileID is required" });
+      return;
+    }
+
+    const careerProfile = await CareerProfile.findOne({ _id: profileID, user: userId });
+
+    if (!careerProfile) {
+      res.status(404).json({ success: false, message: "Career profile not found" });
+      return;
+    }
+
+    const attemptedOAs = await MockTestSession.find({ careerProfile: profileID, user: userId, status: "submitted" });
+
+    const oaReports = attemptedOAs.map((oa: any) => {
+      return {
+        mocktestId: oa._id,
+        score: oa.score,
+        totalScore: oa.totalScore,
+        totalQuestions: oa.questions?.length || 0,
+        attemptedQuestions: oa.answers?.length || 0,
+        submittedAt: oa.submittedAt
+      };
+    });
+    res.status(200).json({ success: true, oaReports });
+  } catch (error: any) {
+    console.error("Error in onlineAssessmentReport:", error);
+    res.status(500).json({ success: false, message: "Failed to fetch online assessment reports", error: error.message });
   }
 };

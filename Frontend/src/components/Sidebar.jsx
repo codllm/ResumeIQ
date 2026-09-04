@@ -7,15 +7,18 @@ import {
   Video,
   Settings,
   LogOut,
+  ChevronsLeftRightEllipsis
 } from "lucide-react";
 
 const Sidebar = ({ activeNav, setActiveNav, user, activeProfile, onLogout, navigate }) => {
   const sidebarNav = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
     { id: "reports", label: "Resume Reports", icon: FileText },
+    { id:"oareports",label:"OA reports",icon:ChevronsLeftRightEllipsis},
     { id: "oa", label: "Online Assessment", icon: Code2 },
     { id: "interview", label: "Mock Interview", icon: Video },
     { id: "settings", label: "Settings", icon: Settings },
+    
   ];
 
   return (

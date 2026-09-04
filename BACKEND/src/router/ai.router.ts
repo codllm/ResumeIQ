@@ -12,6 +12,7 @@ import {
   submitmocktestcontroller,
   mockInterviewAudioController,
   updateCareerProfileController,
+  onlineAssessmentReport
 } from "../controllers/interview.controller";
 
 const router = Router();
@@ -35,6 +36,8 @@ router.post("/mock-test/submit", authenticateToken, submitmocktestcontroller);
 router.post("/mock-interview/start", authenticateToken, mockInterviewController);
 router.post("/mock-interview/answer", authenticateToken, upload.single("audioAnswer"), mockInterviewAnswerController);
 router.get("/mock-interview/audio/:mockInterviewId", mockInterviewAudioController);
+
+router.get("/oa-reports",authenticateToken,onlineAssessmentReport)
 
 
 export default router;
