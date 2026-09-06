@@ -7,6 +7,7 @@ import ReportPage from "../pages/ReportPage";
 import OnlineAssessment from "../pages/onlineAssessmentcomponent";
 import InterviewPages from "../pages/InterviewPages";
 import LiveInterview from "../pages/LiveInterview";
+import AssessmentReport from "../pages/AssessmentReport";
 import { useUser } from "../context/user.context";
 
 const ProtectedRoute = ({ children }) => {
@@ -70,6 +71,22 @@ export const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <ReportPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/oa-reports",
+    element: (
+      <ProtectedRoute>
+        <AssessmentReport />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/assessment-report",
+    element: (
+      <ProtectedRoute>
+        <AssessmentReport />
       </ProtectedRoute>
     ),
   },

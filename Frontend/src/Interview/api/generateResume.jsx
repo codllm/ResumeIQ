@@ -1,4 +1,4 @@
-const BASE_URL = import.meta.env.VITE_BASE_URL || "http://localhost:3639";
+const BASE_URL = import.meta.env.VITE_API_URL || "";
 
 async function request(path, options = {}) {
   const response = await fetch(`${BASE_URL}${path}`, {
@@ -43,5 +43,4 @@ export function generateReportByProfile(careerProfileId, reportType = "base") {
     body: JSON.stringify({ careerProfileId, reportType }),
   });
 }
-
 

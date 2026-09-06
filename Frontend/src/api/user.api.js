@@ -264,6 +264,9 @@ export const submitMockTestApi = async (payload, token) => {
       body: JSON.stringify(payload),
     });
     const data = await response.json();
+    if (data.success) {
+      clearOAReportsCache();
+    }
     return data;
   } catch (err) {
     return {
@@ -315,9 +318,31 @@ export const updateCareerProfileApi = async (profileId, data, token, isFormData 
   }
 };
 
-export async function getassessmentreports(token, profileId) {
+const oaReportsCache = new Map();
+
+export const clearOAReportsCache = () => {
+  oaReportsCache.clear();
+};
+
+export async function getassessmentreports(token, profileId, forceRefresh = false) {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/ai/oa-reports?careerProfileId=${profileId}`, {
+    const hasProfileId =
+      profileId &&
+      profileId !== "undefined" &&
+      profileId !== "null" &&
+      String(profileId).trim().length > 0;
+
+    const cacheKey = `${token}_${hasProfileId ? profileId : "all"}`;
+
+    if (!forceRefresh && oaReportsCache.has(cacheKey)) {
+      return oaReportsCache.get(cacheKey);
+    }
+
+    const url = hasProfileId
+      ? `${API_BASE_URL}/api/ai/oa-reports?careerProfileId=${profileId}`
+      : `${API_BASE_URL}/api/ai/oa-reports`;
+
+    const response = await fetch(url, {
       method: "GET",
       headers: getHeaders(token),
     });
@@ -327,10 +352,17 @@ export async function getassessmentreports(token, profileId) {
     }
 
     const data = await response.json();
-    return data.oaReports || [];
+    if (!data?.success) {
+      throw new Error(data?.message || "Failed to fetch assessment reports");
+    }
+
+    const reports = Array.isArray(data.oaReports) ? data.oaReports : [];
+    oaReportsCache.set(cacheKey, reports);
+    return reports;
   } catch (error) {
     console.error("Error in getassessmentreports:", error);
     return [];
   }
 }
+
 

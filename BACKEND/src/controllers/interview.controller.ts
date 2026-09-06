@@ -1507,35 +1507,100 @@ export const mockInterviewAudioController = async (
 export const onlineAssessmentReport = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = getAuthenticatedUserId(req);
-    const profileID = String(req.body?.profileID || req.query?.careerProfileId || req.query?.profileID || "");
 
-    if (!profileID || !mongoose.isValidObjectId(profileID)) {
-      res.status(400).json({ success: false, message: "Valid profileID is required" });
+    if (!userId) {
+      res.status(401).json({
+        success: false,
+        message: "Unauthorized. User ID not found in token.",
+      });
       return;
     }
 
-    const careerProfile = await CareerProfile.findOne({ _id: profileID, user: userId });
+    const profileID = String(
+      req.body?.profileID || req.query?.careerProfileId || req.query?.profileID || ""
+    );
 
-    if (!careerProfile) {
-      res.status(404).json({ success: false, message: "Career profile not found" });
-      return;
+    const query: any = { user: userId, status: "submitted" };
+
+    if (profileID && profileID !== "undefined" && profileID !== "null" && mongoose.isValidObjectId(profileID)) {
+      const reportsForProfile = await InterviewReport.find({ user: userId, careerProfile: profileID }).select("_id");
+      const reportIds = reportsForProfile.map((r) => r._id);
+      query.$or = [
+        { careerProfile: profileID },
+        { interviewReport: { $in: reportIds } },
+      ];
     }
 
-    const attemptedOAs = await MockTestSession.find({ careerProfile: profileID, user: userId, status: "submitted" });
+    const attemptedOAs = await MockTestSession.find(query)
+      .populate("careerProfile", "name targetRole")
+      .populate("questions")
+      .populate("answers.question")
+      .sort({ submittedAt: -1, createdAt: -1 });
 
     const oaReports = attemptedOAs.map((oa: any) => {
+      const questionsList = oa.questions || [];
+      const answersList = oa.answers || [];
+
+      const questionsReview = questionsList.map((q: any) => {
+        const qId = q?._id ? q._id.toString() : String(q);
+        const userAnswerObj = answersList.find((a: any) => {
+          const aQId = a?.question?._id
+            ? a.question._id.toString()
+            : a?.question
+            ? String(a.question)
+            : "";
+          return aQId === qId;
+        });
+
+        return {
+          _id: q?._id || qId,
+          question: q?.question || "Question",
+          options: Array.isArray(q?.options) ? q.options : [],
+          correctAnswer: q?.correctAnswer || (userAnswerObj ? userAnswerObj.correctAnswer : ""),
+          userAnswer: userAnswerObj ? userAnswerObj.chosenAnswer : "",
+          chosenAnswer: userAnswerObj ? userAnswerObj.chosenAnswer : "",
+          isCorrect: userAnswerObj ? Boolean(userAnswerObj.isCorrect) : false,
+          isAttempted: Boolean(userAnswerObj),
+          score: userAnswerObj ? userAnswerObj.score || 0 : 0,
+          maxScore: q?.score || 1,
+          topic: q?.topic || "General",
+          category: q?.category || "General",
+          explanation: q?.explanation || "",
+        };
+      });
+
+      const correctAnswersCount = answersList.filter((a: any) => a.isCorrect).length;
+      const totalQuestionsCount = questionsList.length || answersList.length || 0;
+      const incorrectAnswersCount = answersList.filter((a: any) => !a.isCorrect).length;
+      const unattemptedCount = Math.max(0, totalQuestionsCount - answersList.length);
+
       return {
+        _id: oa._id,
         mocktestId: oa._id,
-        score: oa.score,
-        totalScore: oa.totalScore,
-        totalQuestions: oa.questions?.length || 0,
-        attemptedQuestions: oa.answers?.length || 0,
-        submittedAt: oa.submittedAt
+        role: oa.role || oa.careerProfile?.targetRole || oa.careerProfile?.name || "Online Assessment",
+        experienceLevel: oa.experienceLevel || "Fresher",
+        totalDurationMinutes: oa.totalDurationMinutes || 60,
+        score: oa.score || 0,
+        totalScore: oa.totalScore || 0,
+        totalQuestions: totalQuestionsCount,
+        attemptedQuestions: answersList.length,
+        correctAnswersCount,
+        incorrectAnswersCount,
+        unattemptedCount,
+        sections: oa.sections || [],
+        submittedAt: oa.submittedAt || oa.createdAt,
+        questions: questionsReview,
+        questionsReview,
       };
     });
+
     res.status(200).json({ success: true, oaReports });
   } catch (error: any) {
     console.error("Error in onlineAssessmentReport:", error);
-    res.status(500).json({ success: false, message: "Failed to fetch online assessment reports", error: error.message });
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch online assessment reports",
+      error: error.message || error,
+    });
   }
 };

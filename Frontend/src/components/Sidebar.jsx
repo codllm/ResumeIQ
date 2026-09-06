@@ -22,7 +22,7 @@ const Sidebar = ({ activeNav, setActiveNav, user, activeProfile, onLogout, navig
   ];
 
   return (
-    <aside className="w-64 h-screen sticky top-0 bg-white border-r border-slate-200/80 p-5 flex flex-col justify-between shrink-0 hidden md:flex z-30">
+    <aside className="w-64 h-screen sticky top-0 bg-white border-r border-slate-200/80 p-5 flex flex-col justify-between shrink-0 hidden md:flex z-30 print:hidden">
       <div className="space-y-10">
         {/* Logo Brand */}
         <div

@@ -28,7 +28,7 @@ const Header = ({ user}) => {
   }
 
   return (
-    <header className="bg-white/90 backdrop-blur-md border-b border-gray-100 px-6 sm:px-8 py-3 flex items-center justify-between sticky top-0 z-30 transition-all">
+    <header className="bg-white/90 backdrop-blur-md border-b border-gray-100 px-6 sm:px-8 py-3 flex items-center justify-between sticky top-0 z-30 transition-all print:hidden">
       {/* Left / Search Bar Section */}
      
 

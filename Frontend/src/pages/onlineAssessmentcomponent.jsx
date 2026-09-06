@@ -20,6 +20,7 @@ import {
   Sparkles,
   ArrowRight,
   Monitor,
+  CircleCheckBig
 } from "lucide-react";
 import { useUser } from "../context/user.context";
 import {
@@ -241,7 +242,8 @@ const OnlineAssessment = () => {
     };
   }, [testPhase, warningCount]);
 
-  const triggerProctorWarning = (reason) => {
+  const triggerProctorWarning = async (reason) => {
+    return;
     setWarningCount((prev) => {
       const nextCount = prev + 1;
       setWarningMessage(`${reason} (Warning ${nextCount}/3)`);
@@ -486,9 +488,6 @@ const OnlineAssessment = () => {
     const questionKey = question?._id || questionIndex;
     return Boolean(userAnswers[questionKey]);
   }).length;
-  const currentSectionComplete =
-    currentSectionTotalQuestions > 0 &&
-    currentSectionAnsweredCount === currentSectionTotalQuestions;
   const isFirstQuestionInSection = currentSectionPosition <= 0;
   const isLastQuestionInSection =
     currentSectionPosition === currentSectionTotalQuestions - 1;
@@ -511,11 +510,6 @@ const OnlineAssessment = () => {
   };
 
   const handleFinishSection = () => {
-    if (!currentSectionComplete) {
-      setError("Answer every question in this section before opening the next section.");
-      return;
-    }
-
     setError("");
 
     if (!hasNextSection) {
@@ -541,7 +535,7 @@ const OnlineAssessment = () => {
   }, [testPhase, visibleQuestionIndexes, currentQIndex]);
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans selection:bg-emerald-500 selection:text-white">
+    <div className="min-h-screen bg-black text-slate-900 flex flex-col font-sans selection:bg-emerald-500 selection:text-white">
       {/* PROCTORING WARNING MODAL OVERLAY */}
       <AnimatePresence>
         {showWarningModal && (
@@ -582,14 +576,14 @@ const OnlineAssessment = () => {
       {/* PHASE 1: SIMPLE BASIC ENTRY UI IN ACTIVE TAB */}
       {testPhase === "entry" && (
         <div className="flex-1 flex flex-col justify-center items-center p-6 max-w-2xl mx-auto w-full space-y-5">
-          <div className="text-center space-y-3">
+          <div className="text-center space-y-4">
             <span className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200 inline-flex items-center gap-1.5">
               Online Assessment
             </span>
-            <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-900">
+            <h1 className="text-3xl sm:text-4xl font-black tracking-tigh text-white">
               Ready for Your Mock Test
             </h1>
-            <p className="text-xs sm:text-sm text-slate-500 max-w-lg mx-auto leading-relaxed">
+            <p className="text-xs sm:text-sm text-white max-w-lg mx-auto leading-relaxed">
             The AI agent is generating your assessment. This may take a few moments.
             </p>
           </div>
@@ -620,7 +614,7 @@ const OnlineAssessment = () => {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <label className="space-y-1">
+              <label className="space-y-2">
                 <span className="text-[10px] font-extrabold text-slate-500 uppercase block">Experience Level</span>
                 <select
                   value={experienceLevel}
@@ -657,13 +651,13 @@ const OnlineAssessment = () => {
       {testPhase === "permissions" && (
         <div className="flex-1 flex flex-col justify-center items-center p-6 max-w-3xl mx-auto w-full space-y-6">
           <div className="text-center space-y-2">
-            <span className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
+            <span className="text-[10px]font-extrabold uppercase tracking-widest text-emerald-700 bg-emerald-50 px-1 py-1 rounded-full border border-emerald-200">
               Setup Step {setupStepNumber} of 4
             </span>
-            <h1 className="text-3xl font-black tracking-tight text-slate-900">
+            <h1 className="text-3xl font-black tracking-tight text-white">
               Prepare Your Test Window
             </h1>
-            <p className="text-xs text-slate-500 max-w-lg mx-auto leading-relaxed">
+            <p className="text-xs text-white max-w-lg mx-auto leading-relaxed">
               Complete each check before the backend generates your personal exam pattern.
             </p>
           </div>
@@ -787,7 +781,7 @@ const OnlineAssessment = () => {
               {currentSetupStep === "ready" && (
                 <div className="flex items-center gap-3.5">
                   <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center shrink-0">
-                    <ShieldCheck size={22} />
+                    <CircleCheckBig size={22} />
                   </div>
                   <div>
                     <h4 className="text-sm font-extrabold text-slate-900">Setup Complete</h4>
@@ -860,11 +854,11 @@ const OnlineAssessment = () => {
         <div className="flex-1 flex flex-col justify-center items-center p-6 max-w-4xl mx-auto w-full space-y-6">
           <div className="text-center space-y-2">
             
-            <h1 className="text-3xl font-black tracking-tight text-slate-900">
+            <h1 className="text-3xl font-black tracking-tight text-white">
                Generated Test Pattern
             </h1>
-            <p className="text-xs text-slate-500 max-w-xl mx-auto leading-relaxed">
-            Review your AI-generated test structure before starting the proctored mock test
+            <p className="text-xs text-white max-w-xl mx-auto leading-relaxed">
+            Review your test structure before starting the proctored mock test
             </p>
           </div>
 
@@ -908,7 +902,7 @@ const OnlineAssessment = () => {
           {/* REAL BACKEND GENERATED SECTIONS BREAKDOWN GRID */}
           <div className="w-full space-y-3">
             <div className="flex items-center justify-between">
-              <h4 className="text-xs font-extrabold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+              <h4 className="text-xs font-extrabold text-white uppercase tracking-wider flex items-center gap-2">
                 <Layers size={16} className="text-emerald-400" /> Generated Sections ({testSections.length})
               </h4>
               
@@ -969,36 +963,35 @@ const OnlineAssessment = () => {
         </div>
       )}
 
-      {/* PHASE 4: REAL PROCTORED MOCK TEST INTERFACE — HackerRank-style layout */}
+      {/* PHASE 4: REAL PROCTORED MOCK TEST INTERFACE */}
       {testPhase === "testing" && (
-        <div className="flex-1 flex flex-col h-screen overflow-hidden bg-white">
-          {/* Dark-green Exam Toolbar */}
-          <header className="bg-emerald-950 px-4 sm:px-6 py-2.5 flex items-center justify-between shrink-0 gap-4 border-b border-emerald-900">
+        <div className="flex-1 flex flex-col h-screen overflow-hidden bg-[#03070a] text-slate-100">
+          <header className="bg-[#071017]/95 px-4 sm:px-7 py-4 flex items-center justify-between shrink-0 gap-4 border-b border-slate-800 shadow-[0_1px_0_rgba(255,255,255,0.04)]">
             <div className="flex items-center gap-3 min-w-0">
-              <div className="w-8 h-8 rounded-md bg-emerald-400 text-emerald-950 flex items-center justify-center font-black text-sm shrink-0">
+              <div className="w-11 h-11 rounded-lg bg-emerald-400 text-black flex items-center justify-center font-black text-lg shrink-0 shadow-lg shadow-emerald-500/20">
                 {"</>"}
               </div>
-              <div className="min-w-0 hidden sm:block">
-                <h3 className="text-xs font-bold text-white truncate">Online Proctored Assessment</h3>
-                <p className="text-[10px] text-emerald-300 truncate">{targetRoleName} &middot; {experienceLevel}</p>
+              <div className="min-w-0">
+                <h3 className="text-base font-extrabold text-white truncate">Online Proctored Assessment</h3>
+                <p className="text-xs text-emerald-400 font-bold truncate">{targetRoleName} &middot; {experienceLevel}</p>
               </div>
             </div>
 
             <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-              <div className="flex items-center gap-1.5 bg-emerald-900/60 border border-emerald-800 px-2.5 py-1 rounded-md text-[11px] font-semibold text-emerald-200">
+              <div className="flex items-center gap-2 bg-slate-800/80 border border-slate-700/80 px-3 sm:px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-slate-200 shadow-inner">
                 <ShieldAlert size={13} className={warningCount > 0 ? "text-white" : "text-emerald-400"} />
                 <span className="hidden sm:inline">Warnings</span> {warningCount}/3
               </div>
 
-              <div className="flex items-center gap-1.5 bg-white px-3 py-1 rounded-md font-mono text-xs font-bold text-emerald-950 tabular-nums">
-                <Clock size={14} />
+              <div className="flex items-center gap-2 bg-slate-800/80 border border-slate-700/80 px-3 sm:px-4 py-2.5 rounded-xl font-mono text-sm font-black text-white tabular-nums shadow-inner">
+                <Clock size={16} className="text-slate-200" />
                 <span>{formatTime(timeLeft)}</span>
               </div>
 
               <button
                 type="button"
                 onClick={handleSubmitAssessment}
-                className="px-3 py-1.5 rounded-md bg-emerald-400 hover:bg-emerald-300 text-emerald-950 text-[11px] font-bold transition cursor-pointer"
+                className="px-4 sm:px-5 py-3 rounded-xl bg-emerald-400 hover:bg-emerald-300 text-black text-xs sm:text-sm font-black transition cursor-pointer shadow-lg shadow-emerald-500/20"
               >
                 End Test
               </button>
@@ -1006,16 +999,16 @@ const OnlineAssessment = () => {
           </header>
 
           {/* Section strip */}
-          <div className="flex items-center gap-1.5 px-4 sm:px-6 py-2 bg-emerald-50 border-b border-emerald-100 overflow-x-auto shrink-0">
+          <div className="flex items-center gap-3 px-4 sm:px-7 py-3 bg-[#071017] border-b border-slate-800 overflow-x-auto shrink-0">
             {testSections.map((sec, sIdx) => (
               <div
                 key={sIdx}
-                className={`px-3 py-1 rounded-full text-[10px] font-bold border whitespace-nowrap ${
+                className={`px-4 py-2 rounded-full text-xs font-extrabold border whitespace-nowrap transition ${
                   activeSectionIdx === sIdx
-                    ? "bg-emerald-600 border-emerald-600 text-white"
+                    ? "bg-emerald-500 border-emerald-400 text-white shadow-lg shadow-emerald-500/20"
                     : sIdx < activeSectionIdx
-                    ? "bg-white border-emerald-200 text-emerald-700"
-                    : "bg-white border-slate-200 text-slate-400"
+                    ? "bg-slate-800 border-emerald-500/30 text-emerald-300"
+                    : "bg-slate-800/70 border-slate-700 text-slate-300"
                 }`}
               >
                 {sIdx < activeSectionIdx ? "✓ " : ""}{sec.category}
@@ -1024,8 +1017,8 @@ const OnlineAssessment = () => {
           </div>
 
           {error && (
-            <div className="mx-4 sm:mx-6 mt-3 p-3 rounded-lg bg-white border border-emerald-300 text-emerald-700 text-xs font-semibold flex items-center gap-2 shrink-0">
-              <AlertTriangle size={15} className="text-emerald-600 shrink-0" />
+            <div className="mx-4 sm:mx-7 mt-3 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-200 text-xs font-semibold flex items-center gap-2 shrink-0">
+              <AlertTriangle size={15} className="text-emerald-400 shrink-0" />
               <span>{error}</span>
             </div>
           )}
@@ -1033,16 +1026,16 @@ const OnlineAssessment = () => {
           {/* Main Split Layout: Question Palette (left) + Question Panel (right) */}
           <div className="flex-1 min-h-0 flex flex-col lg:flex-row">
             {/* LEFT: Question Palette Sidebar */}
-            <aside className="lg:w-64 shrink-0 bg-white border-b lg:border-b-0 lg:border-r border-slate-200 flex flex-col">
-              <div className="p-4 space-y-3 overflow-y-auto">
+            <aside className="lg:w-[300px] shrink-0 bg-[#04090d] border-b border-slate-800 lg:border-b-0 lg:border-r flex flex-col">
+              <div className="p-5 sm:p-7 space-y-6 overflow-y-auto">
                 <div>
-                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+                  <span className="text-xs font-extrabold uppercase tracking-wider text-slate-400">
                     Section {activeSectionIdx + 1} of {testSections.length}
                   </span>
-                  <h4 className="text-xs font-black text-slate-900 truncate">{currentSection?.category}</h4>
+                  <h4 className="mt-3 text-lg font-black text-slate-200 leading-tight">{currentSection?.category}</h4>
                 </div>
 
-                <div className="grid grid-cols-6 lg:grid-cols-5 gap-1.5">
+                <div className="grid grid-cols-6 lg:grid-cols-4 gap-2">
                   {visibleQuestionIndexes.map((qIdx, pos) => {
                     const question = questions[qIdx];
                     const qKey = question?._id || qIdx;
@@ -1053,12 +1046,12 @@ const OnlineAssessment = () => {
                         key={qIdx}
                         type="button"
                         onClick={() => handleJumpToQuestion(qIdx)}
-                        className={`aspect-square rounded-md text-[11px] font-bold flex items-center justify-center border transition cursor-pointer ${
+                        className={`aspect-square min-h-12 rounded-lg text-sm font-black flex items-center justify-center border transition cursor-pointer ${
                           isCurrent
-                            ? "bg-emerald-600 border-emerald-600 text-white ring-2 ring-emerald-200"
+                            ? "bg-emerald-500 border-emerald-300 text-white ring-2 ring-emerald-200 shadow-lg shadow-emerald-500/20"
                             : isAnswered
-                            ? "bg-emerald-50 border-emerald-300 text-emerald-700"
-                            : "bg-white border-slate-200 text-slate-500 hover:border-emerald-300"
+                            ? "bg-white border-white text-slate-950"
+                            : "bg-slate-800 border-slate-700 text-slate-200 hover:border-emerald-400"
                         }`}
                       >
                         {pos + 1}
@@ -1067,24 +1060,24 @@ const OnlineAssessment = () => {
                   })}
                 </div>
 
-                <div className="pt-2 space-y-1.5 text-[10px] font-semibold text-slate-500">
+                <div className="space-y-2.5 text-xs font-semibold text-slate-300">
                   <div className="flex items-center gap-1.5">
-                    <span className="w-3 h-3 rounded-sm bg-emerald-600 shrink-0" /> Current question
+                    <span className="w-3 h-3 rounded-md bg-emerald-400 shrink-0" /> Current question
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <span className="w-3 h-3 rounded-sm bg-emerald-50 border border-emerald-300 shrink-0" /> Answered
+                    <span className="w-3 h-3 rounded-md bg-white shrink-0" /> Answered
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <span className="w-3 h-3 rounded-sm bg-white border border-slate-200 shrink-0" /> Not answered
+                    <span className="w-3 h-3 rounded-md bg-slate-700 border border-slate-500 shrink-0" /> Not answered
                   </div>
                 </div>
 
-                <div className="pt-2 border-t border-slate-100">
-                  <div className="flex items-center justify-between text-[10px] font-bold text-slate-500 mb-1">
+                <div className="pt-5 border-t border-slate-800">
+                  <div className="flex items-center justify-between text-sm font-bold text-slate-300 mb-3">
                     <span>Section Progress</span>
                     <span>{currentSectionAnsweredCount}/{currentSectionTotalQuestions}</span>
                   </div>
-                  <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                  <div className="w-full bg-white h-2 rounded-full overflow-hidden">
                     <div
                       className="h-full bg-emerald-500 rounded-full transition-all"
                       style={{
@@ -1097,29 +1090,34 @@ const OnlineAssessment = () => {
             </aside>
 
             {/* RIGHT: Question Panel */}
-            <main className="flex-1 min-h-0 overflow-y-auto">
-              <div className="max-w-3xl mx-auto p-6 sm:p-10 space-y-6">
+            <main className="flex-1 min-h-0 overflow-y-auto bg-[#05090d]">
+              <div className="max-w-6xl mx-auto p-5 sm:p-8 lg:p-10">
                 {questions.length > 0 && (
-                  <>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[11px] font-mono font-bold text-white bg-emerald-600 px-2.5 py-1 rounded-md">
-                        Q{currentSectionPosition + 1}
-                      </span>
-                      <span className="text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-md capitalize">
-                        {questions[currentQIndex]?.difficulty || "Medium"}
-                      </span>
-                      <span className="text-[10px] font-semibold text-slate-400">
+                  <div className="rounded-xl border border-slate-800 bg-[#0b141c] p-5 sm:p-8 lg:p-10 shadow-2xl shadow-black/40">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <span className="text-2xl font-black text-white">
+                          Question {currentSectionPosition + 1}
+                        </span>
+                        <span className="rounded-full bg-emerald-500/80 px-4 py-1.5 text-xs font-black text-white border border-emerald-300/30">
+                          Multiple Choice
+                        </span>
+                        <span className="rounded-full bg-slate-700 px-4 py-1.5 text-xs font-black text-slate-100 border border-slate-600 capitalize">
+                          {questions[currentQIndex]?.difficulty || "Medium"}
+                        </span>
+                      </div>
+                      <span className="text-xs font-semibold text-slate-300">
                         {currentSectionTotalQuestions} questions in this section
                       </span>
                     </div>
 
                     {/* Question Text */}
-                    <h2 className="text-xl font-bold text-slate-900 leading-relaxed">
+                    <h2 className="mt-7 text-2xl sm:text-3xl font-black text-white leading-snug">
                       {questions[currentQIndex]?.question}
                     </h2>
 
                     {/* Options List */}
-                    <div className="space-y-2.5 pt-2">
+                    <div className="mt-8 space-y-2.5">
                       {questions[currentQIndex]?.options?.map((opt, optIdx) => {
                         const qKey = questions[currentQIndex]._id || currentQIndex;
                         const isSelected = userAnswers[qKey] === opt;
@@ -1128,35 +1126,35 @@ const OnlineAssessment = () => {
                             key={optIdx}
                             type="button"
                             onClick={() => handleSelectOption(qKey, opt)}
-                            className={`w-full p-3.5 rounded-lg border text-left text-sm transition-all flex items-center gap-3 cursor-pointer ${
+                            className={`w-full p-4 rounded-lg border text-left text-base transition-all flex items-center gap-5 cursor-pointer ${
                               isSelected
-                                ? "bg-emerald-50 border-emerald-500 text-emerald-900"
-                                : "bg-white border-slate-200 hover:border-emerald-300 hover:bg-emerald-50/40 text-slate-800"
+                                ? "bg-emerald-500/15 border-emerald-400 text-white shadow-[inset_3px_0_0_#34d399]"
+                                : "bg-slate-800/70 border-slate-700 hover:border-emerald-400 hover:bg-slate-800 text-slate-100"
                             }`}
                           >
                             <span
-                              className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                                isSelected ? "border-emerald-600 bg-emerald-600" : "border-slate-300"
+                              className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                                isSelected ? "border-emerald-400 bg-emerald-500" : "border-slate-300"
                               }`}
                             >
                               {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
                             </span>
-                            <span className="font-mono text-[11px] font-bold text-slate-400 shrink-0">
+                            <span className="font-mono text-sm font-black text-emerald-400 shrink-0">
                               {String.fromCharCode(65 + optIdx)}
                             </span>
-                            <span className={isSelected ? "font-semibold" : "font-medium"}>{opt}</span>
+                            <span className={isSelected ? "font-black" : "font-bold"}>{opt}</span>
                           </button>
                         );
                       })}
                     </div>
 
                     {/* Footer Action Bar */}
-                    <div className="pt-6 mt-2 border-t border-slate-200 flex items-center justify-between gap-3">
+                    <div className="pt-8 mt-8 border-t border-slate-700 flex items-center justify-between gap-3">
                       <button
                         type="button"
                         disabled={isFirstQuestionInSection}
                         onClick={handlePreviousQuestion}
-                        className="px-4 py-2.5 rounded-lg bg-white border border-slate-200 text-slate-600 text-xs font-bold hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 cursor-pointer"
+                        className="px-5 py-3 rounded-lg bg-slate-700 border border-slate-600 text-slate-200 text-sm font-black hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer"
                       >
                         <ChevronLeft size={16} />
                         <span>Previous</span>
@@ -1166,7 +1164,7 @@ const OnlineAssessment = () => {
                         <button
                           type="button"
                           onClick={handleNextQuestion}
-                          className="px-5 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm flex items-center gap-1 cursor-pointer"
+                          className="px-6 py-3 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-sm font-black shadow-lg shadow-emerald-500/20 flex items-center gap-2 cursor-pointer"
                         >
                           <span>Save & Next</span>
                           <ChevronRight size={16} />
@@ -1174,16 +1172,15 @@ const OnlineAssessment = () => {
                       ) : (
                         <button
                           type="button"
-                          disabled={!currentSectionComplete}
                           onClick={handleFinishSection}
-                          className="px-6 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm flex items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="px-6 py-3 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-sm font-black shadow-lg shadow-emerald-500/20 flex items-center gap-2 cursor-pointer"
                         >
-                          <Check size={16} />
-                          <span>{hasNextSection ? "Finish Section" : "Submit Assessment"}</span>
+                          {hasNextSection ? <ChevronRight size={16} /> : <Check size={16} />}
+                          <span>{hasNextSection ? "Next Section" : "Submit Assessment"}</span>
                         </button>
                       )}
                     </div>
-                  </>
+                  </div>
                 )}
               </div>
             </main>

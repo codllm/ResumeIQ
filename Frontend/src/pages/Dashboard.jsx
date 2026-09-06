@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { motion, AnimatePresence } from "framer-motion";
+import { useSearchParams } from "react-router";
 import {
   CheckCircle2,
   AlertTriangle,
@@ -32,9 +33,10 @@ import UpdateCarrierProfile from "../pages/UpdateCarrierProfile";
 const Dashboard = () => {
   const { user, token, logout } = useUser();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  // Navigation State: "dashboard", "reports", "oa", "interview", "settings"
-  const [activeNav, setActiveNav] = useState("dashboard");
+  // Navigation state derived from URL query param "?tab=..." (defaults to "dashboard")
+  const activeNav = searchParams.get("tab") || "dashboard";
   const [selectedReport, setSelectedReport] = useState(null);
 
   // Dynamic Data States
@@ -49,6 +51,9 @@ const Dashboard = () => {
     return localStorage.getItem("active_profile_id") || null;
   });
 
+  const handleSetActiveNav = (tabId) => {
+    setSearchParams({ tab: tabId });
+  };
   // Fetch data on mount
   const fetchDashboardData = async () => {
     if (!token) return;
@@ -230,7 +235,7 @@ const Dashboard = () => {
       {/* 1. LEFT SIDE NAVIGATION COMPONENT (STATIC & UNBLURRED) */}
       <Sidebar
         activeNav={activeNav}
-        setActiveNav={setActiveNav}
+        setActiveNav={handleSetActiveNav}
         user={user}
         activeProfile={activeProfile}
         onLogout={handleLogout}
@@ -367,7 +372,7 @@ const Dashboard = () => {
                 activeReport={activeReport}
                 onSelectReport={(rep) => setSelectedReport(rep)}
                 onGenerateNewReport={handleGenerateNewReport}
-                onViewAllReports={() => setActiveNav("reports")}
+                onViewAllReports={() => handleSetActiveNav("reports")}
               />
               <PastReportsList
                 formattedReports={formattedReports}
@@ -577,13 +582,9 @@ const Dashboard = () => {
             <UpdateCarrierProfile />
           </div>
         )}
-        {
-          activeNav === "oareports" && (
-            <div>
-              <AssessmentReport/>
-            </div>
-          )
-        }
+        <div style={{ display: activeNav === "oareports" ? "block" : "none" }}>
+          <AssessmentReport />
+        </div>
       </div>
     </div>
   );
