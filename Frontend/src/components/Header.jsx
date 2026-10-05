@@ -1,11 +1,13 @@
 import React, { useState,useContext } from "react";
-import { Search, Bell, ChevronDown, User, Settings, LogOut } from "lucide-react";
+import { Bell, ChevronDown, LogOut, Menu, X, ScanLine } from "lucide-react";
+import { sidebarNav } from "./Sidebar";
 import {logoutUserApi} from "../api/user.api"
-import { Navigate, useNavigate,} from "react-router";
+import { useNavigate } from "react-router";
 import {UserContext} from "../context/user.context"
 
-const Header = ({ user}) => {
+const Header = ({ user, activeNav, setActiveNav, showBrandOnDesktop = false }) => {
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
   const {setUser} = useContext(UserContext)
 
   const initial = user?.username?.charAt(0).toUpperCase() || "N";
@@ -29,11 +31,77 @@ const Header = ({ user}) => {
 
   return (
     <header className="bg-white/90 backdrop-blur-md border-b border-gray-100 px-6 sm:px-8 py-3 flex items-center justify-between sticky top-0 z-30 transition-all print:hidden">
-      {/* Left / Search Bar Section */}
-     
+      {/* Mobile Brand */}
+      <div className={`flex items-center gap-2 ${showBrandOnDesktop ? "" : "md:hidden"}`}>
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500 text-white shadow-sm shadow-emerald-500/20">
+          <ScanLine size={16} />
+        </div>
+        <span className="text-xl font-extrabold tracking-tight text-slate-900">
+          Resume<span className="text-emerald-600">IQ</span>
+        </span>
+      </div>
 
       {/* Right Controls Section */}
       <div className="flex items-center gap-3 justify-end ml-auto">
+        <div className="relative md:hidden">
+          <button
+            type="button"
+            aria-label={showMobileMenu ? "Close navigation menu" : "Open navigation menu"}
+            aria-expanded={showMobileMenu}
+            onClick={() => setShowMobileMenu((previous) => !previous)}
+            className="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200/80 bg-white text-gray-600 shadow-xs transition hover:bg-gray-50 hover:text-gray-900"
+          >
+            <span className="relative flex h-[18px] w-[18px] items-center justify-center">
+              <Menu
+                size={18}
+                className={`absolute transition-all duration-300 ease-in-out ${
+                  showMobileMenu
+                    ? "rotate-90 scale-75 opacity-0"
+                    : "rotate-0 scale-100 opacity-100"
+                }`}
+              />
+              <X
+                size={18}
+                className={`absolute transition-all duration-300 ease-in-out ${
+                  showMobileMenu
+                    ? "rotate-0 scale-100 opacity-100"
+                    : "-rotate-90 scale-75 opacity-0"
+                }`}
+              />
+            </span>
+          </button>
+
+          {showMobileMenu && (
+            <div className="absolute right-0 top-11 z-50 w-56 rounded-2xl border border-slate-200 bg-white p-2 shadow-xl shadow-slate-950/10">
+              <p className="px-3 pb-2 pt-1 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                Navigate
+              </p>
+              {sidebarNav.map((item) => {
+                const Icon = item.icon;
+                const isSelected = activeNav === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => {
+                      setShowMobileMenu(false);
+                      setActiveNav(item.id);
+                    }}
+                    className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-xs font-extrabold transition ${
+                      isSelected
+                        ? "bg-emerald-50 text-emerald-700"
+                        : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                    }`}
+                  >
+                    <Icon size={16} className={isSelected ? "text-emerald-600" : "text-slate-400"} />
+                    <span>{item.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
         {/* Notification Bell with Active Indicator */}
         <button
           type="button"

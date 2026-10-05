@@ -1,4 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
+import { generateWithOllama } from "../ai/ollama.ai.service";
 import { z } from "zod";
 import { AI_CONFIG } from "../../config/ai.config";
 
@@ -77,12 +78,81 @@ export const mcqQuestionSchema = sectionMCQQuestionSchema;
 // HELPERS
 // ==========================================
 
-function getAIClient() {
+function getAIClient(): GoogleGenAI | null {
+  if (process.env.AI_PROVIDER === "ollama") {
+    return null;
+  }
+
   const apiKey = process.env.GOOGLE_GENAI_API_KEY;
   if (!apiKey) {
     throw new Error("GOOGLE_GENAI_API_KEY is not defined in environment variables.");
   }
   return new GoogleGenAI({ apiKey });
+}
+
+async function generateJson<T>(
+  ai: GoogleGenAI | null,
+  prompt: string,
+  schema: Record<string, unknown>,
+  _name: string
+): Promise<T> {
+  if (process.env.AI_PROVIDER === "ollama") {
+    const text = await generateWithOllama(prompt, schema);
+    return JSON.parse(text) as T;
+  }
+
+  if (!ai) {
+    throw new Error("AI client is not configured.");
+  }
+
+  const response = await ai.models.generateContent({
+    model: AI_CONFIG.DEFAULT_MODEL,
+    contents: prompt,
+    config: {
+      responseMimeType: "application/json",
+      responseJsonSchema: schema,
+    },
+  });
+
+  const text = response.text || "{}";
+  return JSON.parse(text) as T;
+}
+
+function formatGeminiError(error: any): string {
+  const status = error?.status;
+  const message = error?.message || "Unknown Gemini API error";
+  console.error("Gemini API failure", {
+    status,
+    code: error?.code,
+    type: error?.type,
+    message,
+  });
+
+  if (status === 401 || status === 403) return "Gemini API key is invalid or does not have access.";
+  if (status === 404) return `Gemini model or endpoint was not found: ${message}`;
+  if (status === 429) return "Gemini quota or rate limit exceeded. Check your Google AI Studio limits.";
+  if (status === 400) return `Gemini rejected the request: ${message}`;
+  return `Gemini request failed: ${message}`;
+}
+
+async function generateText(
+  ai: GoogleGenAI | null,
+  prompt: string
+): Promise<string> {
+  if (process.env.AI_PROVIDER === "ollama") {
+    return generateWithOllama(prompt);
+  }
+
+  if (!ai) {
+    throw new Error("AI client is not configured.");
+  }
+
+  const response = await ai.models.generateContent({
+    model: AI_CONFIG.DEFAULT_MODEL,
+    contents: prompt,
+  });
+
+  return response.text?.trim() || "";
 }
 
 function normalizeMatchScore(raw: unknown): number {
@@ -128,7 +198,7 @@ function sanitizeInterviewReport(raw: any): InterviewReport {
 // ==========================================
 
 /**
- * Generates an interview report using Gemini AI given job description, resume, and self description.
+ * Generates an interview report using Gemini given job description, resume, and self description.
  */
 export async function generateInterviewReport(
   jobDesc: string,
@@ -186,27 +256,21 @@ Rules:
   const jsonSchema = z.toJSONSchema(interviewReportSchema);
 
   try {
-    const response = await ai.models.generateContent({
-      model: AI_CONFIG.DEFAULT_MODEL,
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        responseJsonSchema: jsonSchema,
-      },
-    });
-
-    const text = response.text || "{}";
-    const parsed = JSON.parse(text);
+    const parsed = await generateJson<InterviewReport>(
+      ai,
+      prompt,
+      jsonSchema as Record<string, unknown>,
+      "interview_report"
+    );
     return sanitizeInterviewReport(parsed);
   } catch (error: any) {
     const isQuotaError = error.status === 429 || (error.message && (error.message.includes("429") || error.message.toLowerCase().includes("quota")));
     if (isQuotaError) {
-      console.warn("Gemini API Quota / High Traffic Exceeded.");
-      throw new Error("Our AI is currently experiencing high traffic. Please try again in a few moments.");
+      console.warn("Gemini API quota / rate limit exceeded.");
+      throw new Error("Gemini quota or rate limit exceeded. Check your Google AI Studio limits.");
     }
 
-    console.error("Gemini AI API Error:", error.message || error);
-    throw new Error("Our AI is currently experiencing high traffic. Please try again in a few moments.");
+    throw new Error(formatGeminiError(error));
   }
 }
 
@@ -252,29 +316,57 @@ ${JSON.stringify(mocktestpattern, null, 2)}
 8. For Aptitude sections, generate actual quantitative / logical / verbal reasoning problems rather than technical questions.
 9. For Technical sections, test concepts and practical application.
 10. For Resume/Project sections, focus on meaningful projects, technologies, and decisions mentioned in the resume.
+
+Question difficulty requirements:
+- Do NOT ask very basic definition, abbreviation, or memorization questions.
+- Do NOT ask questions that can be answered by repeating one obvious sentence from a tutorial.
+- Prefer practical, scenario-based questions that require reasoning and choosing the best solution.
+- Include code-tracing, debugging, output-prediction, trade-off, edge-case, data-flow, and performance questions when relevant to the role.
+- For technical questions, test how the candidate applies the concept in a real project, not just whether they can define it.
+- Make distractor options plausible and technically related; do not use obviously wrong joke answers.
+- Respect each section's requested difficulty. For medium/hard sections, questions must require at least two reasoning steps.
+- Match the candidate's experience level: fresher questions should be foundational but applied; experienced-candidate questions should include architecture, optimization, debugging, reliability, and trade-offs where relevant.
+- Never lower the difficulty merely to make generation easier.
+
+The response MUST have exactly this structure. Every section MUST contain a questions array:
+{
+  "sections": [
+    {
+      "category": "Technical",
+      "questions": [
+        {
+          "question": "string",
+          "options": ["option 1", "option 2", "option 3", "option 4"],
+          "correctAnswer": "option 1",
+          "topic": "string",
+          "explanation": "string",
+          "score": 1,
+          "difficulty": "easy"
+        }
+      ]
+    }
+  ]
+}
+
+Never omit "questions". Never return only section names or question counts. Return ONLY valid JSON.
 `;
 
   const jsonSchema = z.toJSONSchema(sectionMCQQuestionSchema);
 
   try {
-    const response = await ai.models.generateContent({
-      model: AI_CONFIG.DEFAULT_MODEL,
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        responseJsonSchema: jsonSchema,
-      },
-    });
-
-    const text = response.text || "{}";
-    const parsed = JSON.parse(text);
+    const parsed = await generateJson<SectionMCQQuestions>(
+      ai,
+      prompt,
+      jsonSchema as Record<string, unknown>,
+      "mock_assessment_questions"
+    );
     return sectionMCQQuestionSchema.parse(parsed);
   } catch (error: any) {
     const isQuotaError =
       error.status === 429 || (error.message && error.message.includes("429"));
     if (isQuotaError) {
-      console.warn("Gemini API quota exceeded (429).");
-      throw new Error("Gemini API Quota Exceeded. Please check your API key or limits.");
+      console.warn("Gemini API quota / rate limit exceeded (429).");
+      throw new Error("Gemini API quota exceeded. Please check your Google AI Studio limits.");
     }
     console.error("Gemini MCQ generation error:", error.message || error);
     throw error;
@@ -343,12 +435,7 @@ Requirements:
 `;
 
   try {
-    const response = await ai.models.generateContent({
-      model: AI_CONFIG.DEFAULT_MODEL,
-      contents: prompt,
-    });
-
-    const question = response.text?.trim();
+    const question = await generateText(ai, prompt);
 
     if (!question) {
       throw new Error("Gemini did not generate an interview question");
@@ -488,24 +575,19 @@ Return ONLY the valid JSON object matching the schema:
   const jsonSchema = z.toJSONSchema(assessmentPatternSchema);
 
   try {
-    const response = await ai.models.generateContent({
-      model: AI_CONFIG.DEFAULT_MODEL,
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        responseJsonSchema: jsonSchema,
-      },
-    });
-
-    const text = response.text || "{}";
-    const parsed = JSON.parse(text);
+    const parsed = await generateJson<AssessmentPattern>(
+      ai,
+      prompt,
+      jsonSchema as Record<string, unknown>,
+      "assessment_pattern"
+    );
     return assessmentPatternSchema.parse(parsed);
   } catch (error: any) {
     const isQuotaError =
       error.status === 429 || (error.message && error.message.includes("429"));
     if (isQuotaError) {
-      console.warn("Gemini API Quota Exceeded (429).");
-      throw new Error("Gemini API Quota Exceeded (429). Please check your API key or limits.");
+      console.warn("Gemini API quota / rate limit exceeded (429).");
+      throw new Error("Gemini API quota exceeded (429). Please check your Google AI Studio limits.");
     }
     console.error("Error generating assessment pattern:", error.message || error);
     throw error;

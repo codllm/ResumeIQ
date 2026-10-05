@@ -7,6 +7,7 @@ import {
   Check,
   AlertTriangle,
   ShieldCheck,
+  ArrowLeft,
   ArrowRight,
 } from "lucide-react";
 import { getCareerProfiles, getInterviewReportsApi } from "../api/user.api";
@@ -95,6 +96,13 @@ const InterviewPages = () => {
 
   const allGranted = CameraGranted && auiodGranted && fullscreenGranted;
 
+  const handleBackToDashboard = () => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {});
+    }
+    navigate("/dashboard");
+  };
+
   const handleContinue = () => {
     if (!allGranted) {
       seterror("Complete all steps before starting the interview.");
@@ -147,6 +155,15 @@ const InterviewPages = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6 font-sans">
+      <button
+        type="button"
+        onClick={handleBackToDashboard}
+        className="fixed top-4 left-4 z-40 inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white text-slate-700 border border-slate-200 shadow-sm text-xs font-extrabold hover:bg-slate-100 transition cursor-pointer"
+      >
+        <ArrowLeft size={15} />
+        Back to Dashboard
+      </button>
+
       <div className="w-full max-w-md space-y-5">
         <div className="text-center space-y-2">
           <span className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200 inline-block">

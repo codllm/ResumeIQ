@@ -10,6 +10,10 @@ import {
   Loader2,
   FileText,
   Sparkles,
+  ArrowRight,
+  BrainCircuit,
+  Code2,
+  Video,
 } from "lucide-react";
 import { useUser } from "../context/user.context";
 import {
@@ -17,7 +21,6 @@ import {
   getInterviewReportsApi,
   generateInterviewReportApi,
 } from "../api/user.api";
-import AssessmentReport from "../pages/AssessmentReport"
 
 // Import Modular Components
 import Sidebar from "../components/Sidebar";
@@ -27,8 +30,6 @@ import StatCards from "../components/StatCards";
 import ScoreHistoryGraph from "../components/ScoreHistoryGraph";
 import PastReportsList from "../components/PastReportsList";
 import ReportDetailsView from "../components/ReportDetailsView";
-import StartInterview from "../components/startInterview";
-import StartOnlineAssessment from "../components/StartOnlineAssessment";
 import UpdateCarrierProfile from "../pages/UpdateCarrierProfile";
 const Dashboard = () => {
   const { user, token, logout } = useUser();
@@ -52,6 +53,20 @@ const Dashboard = () => {
   });
 
   const handleSetActiveNav = (tabId) => {
+    // These experiences need their own permission/fullscreen flow. Keeping
+    // them outside the dashboard prevents nested scroll areas on phones.
+    if (tabId === "oa") {
+      navigate("/online-assessment");
+      return;
+    }
+    if (tabId === "interview") {
+      handleStartInterview();
+      return;
+    }
+    if (tabId === "oareports") {
+      navigate("/oa-reports");
+      return;
+    }
     setSearchParams({ tab: tabId });
   };
   // Fetch data on mount
@@ -199,13 +214,11 @@ const Dashboard = () => {
       } else {
         setError(
           res.message ||
-            "Our AI is currently experiencing high traffic. Please try again in a few moments."
+            "Failed to generate the interview report."
         );
       }
     } catch (err) {
-      setError(
-        "Our AI is currently experiencing high traffic. Please try again in a few moments."
-      );
+      setError(err.message || "Failed to generate the interview report.");
     } finally {
       setGenerating(false);
     }
@@ -231,7 +244,7 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="h-screen w-screen overflow-hidden bg-slate-50 text-slate-900 flex font-sans selection:bg-emerald-500 selection:text-white">
+    <div className="print-dashboard-shell h-screen w-screen overflow-hidden bg-slate-50 text-slate-900 flex font-sans selection:bg-emerald-500 selection:text-white">
       {/* 1. LEFT SIDE NAVIGATION COMPONENT (STATIC & UNBLURRED) */}
       <Sidebar
         activeNav={activeNav}
@@ -243,9 +256,9 @@ const Dashboard = () => {
       />
 
       {/* 2. RIGHT MAIN CONTENT CANVAS */}
-      <div className="flex-1 h-screen overflow-y-auto flex flex-col min-w-0">
+      <div className="print-dashboard-content flex-1 h-screen overflow-y-auto flex flex-col min-w-0">
         {/* Top Sticky Header Component (UNBLURRED) */}
-        <Header user={user} />
+        <Header user={user} activeNav={activeNav} setActiveNav={handleSetActiveNav} />
 
         {/* Notifications */}
         {successMsg && (
@@ -363,6 +376,81 @@ const Dashboard = () => {
                 latestKeywordMatch={latestKeywordMatch}
               />
             </div>
+
+            <section className="rounded-3xl border border-slate-200/90 bg-white p-5 shadow-xs">
+              <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <p className="text-[11px] font-extrabold uppercase tracking-wider text-emerald-600">
+                    Your career workspace
+                  </p>
+                  <h2 className="mt-1 text-lg font-black text-slate-900">
+                    Keep your preparation moving
+                  </h2>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {activeProfile
+                      ? `Working toward ${activeProfile.targetRole || "your selected role"}.`
+                      : "Create a profile to personalize your preparation plan."}
+                  </p>
+                </div>
+                <span className="text-xs font-bold text-slate-400">
+                  {formattedReports.length} report{formattedReports.length === 1 ? "" : "s"} generated
+                </span>
+              </div>
+
+              <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-3">
+                <button
+                  type="button"
+                  onClick={handleGenerateNewReport}
+                  disabled={generating}
+                  className="group rounded-2xl border border-emerald-100 bg-emerald-50/70 p-4 text-left transition hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <span className="flex size-9 items-center justify-center rounded-xl bg-emerald-600 text-white">
+                    <BrainCircuit size={18} />
+                  </span>
+                  <span className="mt-4 flex items-center justify-between gap-3">
+                    <span>
+                      <span className="block text-sm font-extrabold text-slate-900">Analyze resume</span>
+                      <span className="mt-1 block text-[11px] font-medium leading-relaxed text-slate-500">Refresh your ATS score and skill gaps.</span>
+                    </span>
+                    <ArrowRight size={16} className="shrink-0 text-emerald-600 transition-transform group-hover:translate-x-1" />
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleStartInterview}
+                  className="group rounded-2xl border border-sky-100 bg-sky-50/70 p-4 text-left transition hover:-translate-y-0.5 hover:border-sky-300 hover:shadow-md"
+                >
+                  <span className="flex size-9 items-center justify-center rounded-xl bg-sky-600 text-white">
+                    <Video size={18} />
+                  </span>
+                  <span className="mt-4 flex items-center justify-between gap-3">
+                    <span>
+                      <span className="block text-sm font-extrabold text-slate-900">Practice interview</span>
+                      <span className="mt-1 block text-[11px] font-medium leading-relaxed text-slate-500">Answer role-specific questions with AI.</span>
+                    </span>
+                    <ArrowRight size={16} className="shrink-0 text-sky-600 transition-transform group-hover:translate-x-1" />
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleSetActiveNav("oa")}
+                  className="group rounded-2xl border border-violet-100 bg-violet-50/70 p-4 text-left transition hover:-translate-y-0.5 hover:border-violet-300 hover:shadow-md"
+                >
+                  <span className="flex size-9 items-center justify-center rounded-xl bg-violet-600 text-white">
+                    <Code2 size={18} />
+                  </span>
+                  <span className="mt-4 flex items-center justify-between gap-3">
+                    <span>
+                      <span className="block text-sm font-extrabold text-slate-900">Take assessment</span>
+                      <span className="mt-1 block text-[11px] font-medium leading-relaxed text-slate-500">Build confidence with timed practice.</span>
+                    </span>
+                    <ArrowRight size={16} className="shrink-0 text-violet-600 transition-transform group-hover:translate-x-1" />
+                  </span>
+                </button>
+              </div>
+            </section>
 
             {/* MIDDLE GRID: SCORE GRAPH + PAST REPORTS LIST */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
@@ -564,27 +652,11 @@ const Dashboard = () => {
             )}
           </main>
         )}
-        {activeNav === "oa" && (
-          <div>
-            <StartOnlineAssessment />
-          </div>
-        )}
-        {activeNav === "interview" && (
-          <div>
-            <StartInterview
-              activeProfile={activeProfile}
-              activeReport={activeReport}
-            />
-          </div>
-        )}
         {activeNav === "settings" && (
           <div>
             <UpdateCarrierProfile />
           </div>
         )}
-        <div style={{ display: activeNav === "oareports" ? "block" : "none" }}>
-          <AssessmentReport />
-        </div>
       </div>
     </div>
   );

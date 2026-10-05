@@ -529,9 +529,10 @@ export const InterviewController = async (req: Request, res: Response): Promise<
     });
   } catch (error: any) {
     console.error("Error in InterviewController:", error);
-    res.status(500).json({
+    const isQuotaError = /quota|rate limit/i.test(error?.message || "");
+    res.status(isQuotaError ? 429 : 500).json({
       success: false,
-      message: "Our AI is currently experiencing high traffic. Please try again in a few moments.",
+      message: error.message || "AI request failed.",
       error: error.message || error,
     });
   }
@@ -1537,6 +1538,13 @@ export const onlineAssessmentReport = async (req: Request, res: Response): Promi
       .populate("answers.question")
       .sort({ submittedAt: -1, createdAt: -1 });
 
+    console.log("OA reports fetched", {
+      userId,
+      profileID: profileID || null,
+      count: attemptedOAs.length,
+      ids: attemptedOAs.map((oa) => String(oa._id)),
+    });
+
     const oaReports = attemptedOAs.map((oa: any) => {
       const questionsList = oa.questions || [];
       const answersList = oa.answers || [];
@@ -1575,6 +1583,7 @@ export const onlineAssessmentReport = async (req: Request, res: Response): Promi
       const unattemptedCount = Math.max(0, totalQuestionsCount - answersList.length);
 
       return {
+        reportType: "oa",
         _id: oa._id,
         mocktestId: oa._id,
         role: oa.role || oa.careerProfile?.targetRole || oa.careerProfile?.name || "Online Assessment",

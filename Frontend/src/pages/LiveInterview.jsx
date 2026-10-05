@@ -24,7 +24,7 @@ const VOICE_THRESHOLD = 0.035;
 
 // Illustrated placeholder avatar for the AI interviewer (not a real person's photo).
 const INTERVIEWER_AVATAR_URL =
-  "https://api.dicebear.com/7.x/avataaars/svg?seed=Ira&backgroundColor=b6e3f4&top=longHairStraight2,longHairCurly&facialHairProbability=0";
+  "https://res.cloudinary.com/dju008haw/image/upload/v1790271210/ChatGPT_Image_Sep_24_2026_11_01_32_PM_yhtrre.png";
 
 const formatElapsed = (seconds) => {
   const mins = Math.floor(seconds / 60)
@@ -45,6 +45,7 @@ const LiveInterview = () => {
   const recorderRef = useRef(null);
   const chunksRef = useRef([]);
   const micStreamRef = useRef(null);
+  const cameraStreamRef = useRef(null);
   const audioContextRef = useRef(null);
   const silenceFrameRef = useRef(null);
   const submittingRef = useRef(false);
@@ -59,6 +60,7 @@ const LiveInterview = () => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [cameraError, setCameraError] = useState("");
+  const [cameraReady, setCameraReady] = useState(false);
   const [completed, setCompleted] = useState(false);
   const [transcript, setTranscript] = useState([]);
   const [finalResult, setFinalResult] = useState(null);
@@ -113,26 +115,37 @@ const LiveInterview = () => {
   };
 
   useEffect(() => {
-    let stream;
+    let isMounted = true;
 
     const startCamera = async () => {
       try {
-        stream = await navigator.mediaDevices.getUserMedia({
+        const stream = await navigator.mediaDevices.getUserMedia({
           video: true,
           audio: false,
         });
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
+
+        if (!isMounted || !videoRef.current) {
+          stream.getTracks().forEach((track) => track.stop());
+          return;
         }
+
+        cameraStreamRef.current = stream;
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+        setCameraReady(true);
       } catch (err) {
-        setCameraError("Camera preview is unavailable.");
+        if (isMounted) {
+          setCameraError("Camera preview is unavailable. Allow camera access and try again.");
+        }
       }
     };
 
     startCamera();
 
     return () => {
-      stream?.getTracks().forEach((track) => track.stop());
+      isMounted = false;
+      cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
+      cameraStreamRef.current = null;
       stopMicCapture();
     };
   }, []);
@@ -409,17 +422,7 @@ const LiveInterview = () => {
         </div>
 
         <div className="flex items-center gap-4">
-          <div className="hidden sm:flex items-center gap-2 w-40">
-            <div className="flex-1 h-1.5 rounded-full bg-white/10 overflow-hidden">
-              <div
-                className="h-full bg-sky-400 transition-all duration-500"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-            <span className="text-[11px] text-slate-400 tabular-nums shrink-0">
-              {answeredCount}/{totalQuestions}
-            </span>
-          </div>
+          
           <button
             type="button"
             onClick={() => navigate("/dashboard")}
@@ -482,17 +485,17 @@ const LiveInterview = () => {
           </div>
         </main>
       ) : (
-        <main className="flex-1 min-h-0 flex flex-col p-4 sm:p-6 gap-4">
-          {/* Video stage: interviewer (left, larger) and candidate (right) side by side, like a call UI */}
-          <div className="flex-1 min-h-0 grid grid-cols-1 sm:grid-cols-[1.6fr_1fr] gap-3 sm:gap-4">
+        <main className="flex-none flex flex-col p-4 sm:p-6 gap-4">
+          {/* Video stage */}
+          <div className="w-full max-w-[calc(64rem+0.5rem)] mx-auto h-[420px] grid grid-cols-1 grid-rows-2 sm:grid-cols-2 sm:grid-rows-1 gap-4 sm:gap-10">
             {/* Interviewer tile */}
             <div
-              className={`relative rounded-2xl overflow-hidden bg-[#161a20] border-2 transition-colors duration-300 flex items-center justify-center ${
+              className={`relative min-h-0 rounded-2xl overflow-hidden bg-[#161a20] border-2 transition-colors duration-300 flex items-center justify-center ${
                 interviewerSpeaking ? "border-sky-400" : "border-white/10"
               }`}
             >
               <div
-                className={`w-32 h-32 sm:w-44 sm:h-44 rounded-full overflow-hidden ring-4 transition-all duration-300 ${
+                className={`w-24 h-24 sm:w-44 sm:h-44 rounded-full overflow-hidden ring-4 transition-all duration-300 ${
                   interviewerSpeaking ? "ring-sky-400/70" : "ring-white/10"
                 }`}
               >
@@ -517,7 +520,7 @@ const LiveInterview = () => {
 
             {/* Candidate tile */}
             <div
-              className={`relative rounded-2xl overflow-hidden bg-black border-2 transition-colors duration-300 ${
+              className={`relative min-h-0 rounded-2xl overflow-hidden bg-black border-2 transition-colors duration-300 ${
                 candidateSpeaking ? "border-emerald-400" : "border-white/10"
               }`}
             >
@@ -538,8 +541,17 @@ const LiveInterview = () => {
                 autoPlay
                 muted
                 playsInline
+                onLoadedMetadata={(event) => {
+                  event.currentTarget.play().then(() => setCameraReady(true)).catch(() => {});
+                }}
                 className="w-full h-full object-cover"
               />
+
+              {!cameraReady && !cameraError && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/70 text-[11px] text-slate-300">
+                  Starting camera preview…
+                </div>
+              )}
 
               <span className="absolute bottom-2.5 left-2.5 z-10 text-[11px] font-medium bg-black/55 backdrop-blur-sm px-2.5 py-1 rounded-md truncate max-w-[85%]">
                 {user?.username || user?.email || "You"}
@@ -585,3 +597,4 @@ const LiveInterview = () => {
 };
 
 export default LiveInterview;
+ 

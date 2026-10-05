@@ -14,6 +14,7 @@ import {
   Loader2,
   Award,
   Check,
+  ArrowLeft,
   Mic,
   Layers,
   Play,
@@ -293,6 +294,12 @@ const OnlineAssessment = () => {
     setTestPhase("permissions");
   };
 
+  const handleBackToDashboard = () => {
+    stopMediaStream();
+    exitFullscreen();
+    navigate("/dashboard");
+  };
+
   // PHASE TRANSITION 2: Fetch Real Exam Pattern from Backend and Move to Pattern View
   const handleFetchBackendPattern = async () => {
     if (!cameraGranted || !micGranted || !environmentConfirmed || !isFullscreen) {
@@ -399,6 +406,12 @@ const OnlineAssessment = () => {
         };
         const res = await submitMockTestApi(payload, token);
         if (res.success) {
+          const selectedReport = reports.find((report) => report._id === selectedReportId);
+          const selectedProfileId = selectedReport?.careerProfile?._id || selectedReport?.careerProfile;
+          if (selectedProfileId) {
+            localStorage.setItem("active_profile_id", String(selectedProfileId));
+          }
+
           const score = res.mocktestscore ?? res.score ?? 0;
           const totalScore = res.totalScore || res.totalQuestions || 1;
           setTestResult({
@@ -536,6 +549,17 @@ const OnlineAssessment = () => {
 
   return (
     <div className="min-h-screen bg-black text-slate-900 flex flex-col font-sans selection:bg-emerald-500 selection:text-white">
+      {testPhase !== "testing" && (
+        <button
+          type="button"
+          onClick={handleBackToDashboard}
+          className="fixed top-4 left-4 z-40 inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white text-slate-700 border border-slate-200 shadow-lg text-xs font-extrabold hover:bg-slate-100 transition cursor-pointer"
+        >
+          <ArrowLeft size={15} />
+          Back to Dashboard
+        </button>
+      )}
+
       {/* PROCTORING WARNING MODAL OVERLAY */}
       <AnimatePresence>
         {showWarningModal && (
@@ -600,7 +624,15 @@ const OnlineAssessment = () => {
                   <label className="text-[10px] font-extrabold text-slate-500 uppercase block">Select Profile / Scan</label>
                   <select
                     value={selectedReportId}
-                    onChange={(e) => setSelectedReportId(e.target.value)}
+                    onChange={(e) => {
+                      const reportId = e.target.value;
+                      setSelectedReportId(reportId);
+                      const selectedReport = reports.find((report) => report._id === reportId);
+                      const profileId = selectedReport?.careerProfile?._id || selectedReport?.careerProfile;
+                      if (profileId) {
+                        localStorage.setItem("active_profile_id", String(profileId));
+                      }
+                    }}
                     className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-900 outline-none focus:border-emerald-500"
                   >
                     {reports.map((r) => (
@@ -1243,6 +1275,13 @@ const OnlineAssessment = () => {
               className="w-full py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-black text-xs shadow-lg shadow-emerald-500/20 transition cursor-pointer"
             >
               Return to Dashboard
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate("/oa-reports")}
+              className="w-full py-3 rounded-2xl border border-emerald-200 text-emerald-700 hover:bg-emerald-50 font-black text-xs transition cursor-pointer"
+            >
+              View OA Reports
             </button>
           </div>
         </div>

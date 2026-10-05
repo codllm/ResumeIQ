@@ -57,10 +57,7 @@ const StatCards = ({ latestAtsScore = 0, latestSkillMatch = 0, latestKeywordMatc
             </div>
 
             <div className="min-w-0">
-              <div className="inline-flex items-center gap-1.5 text-xs font-extrabold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
-                <Gauge size={13} />
-                {atsStatus}
-              </div>
+              
               <h3 className="text-base font-black text-slate-900 mt-2">Resume Fit</h3>
               <p className="text-xs text-slate-500 leading-relaxed mt-1">
                 Snapshot from your latest generated report.

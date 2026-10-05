@@ -23,6 +23,7 @@
     "mongoose": "^9.9.0",
     "multer": "^2.2.0",
     "nodemailer": "^9.0.5",
+    "ollama": "^0.6.4",
     "pdf-parse": "^2.4.5",
     "resend": "^6.20.0",
     "wav": "^1.0.2",

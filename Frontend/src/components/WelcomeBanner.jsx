@@ -11,7 +11,7 @@ const WelcomeBanner = ({
   navigate,
 }) => {
   return (
-    <div className="lg:col-span-12 relative overflow-hidden bg-gradient-to-r from-[#072d27] via-[#093c33] to-[#041d19] rounded-3xl p-4 text-white shadow-xl flex flex-col md:flex-row items-center justify-between min-h-[220px]">
+    <div className="lg:col-span-5 relative overflow-hidden bg-gradient-to-r from-[#072d27] via-[#093c33] to-[#041d19] rounded-3xl p-5 text-white shadow-xl flex flex-col items-start justify-between min-h-[220px]">
       {/* Background Decorative Rings */}
       <div className="absolute -right-16 -top-16 w-80 h-80 rounded-full border border-emerald-500/10 pointer-events-none" />
       <div className="absolute -right-8 -top-8 w-64 h-64 rounded-full border border-emerald-500/15 pointer-events-none" />
@@ -50,7 +50,7 @@ const WelcomeBanner = ({
           )}
         </div>
 
-        <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
+        <h1 className="text-2xl sm:text-xl font-black tracking-tight text-white">
           Welcome back, {user?.username?.toUpperCase() || user?.name?.toUpperCase() || "USER"}! 👋
         </h1>
 
@@ -67,17 +67,17 @@ const WelcomeBanner = ({
       </div>
 
       {/* Right Target Graphic & Badge */}
-      <div className="relative z-10 hidden lg:flex items-center gap-6 mt-6 md:mt-0">
-        <div className="relative w-40 h-40 flex items-center justify-center">
+      <div className="relative z-10 hidden xl:flex items-center gap-4 mt-6">
+        <div className="relative w-28 h-28 flex items-center justify-center">
           <div className="absolute inset-0 rounded-full border-2 border-emerald-400/20 animate-ping"></div>
-          <div className="w-36 h-36 rounded-full border-8 border-emerald-500/30 flex items-center justify-center">
-            <div className="w-24 h-24 rounded-full border-8 border-emerald-400/60 flex items-center justify-center bg-emerald-900/40">
-              <Target size={40} className="text-emerald-300" />
+          <div className="w-28 h-28 rounded-full border-8 border-emerald-500/30 flex items-center justify-center">
+            <div className="w-20 h-20 rounded-full border-8 border-emerald-400/60 flex items-center justify-center bg-emerald-900/40">
+              <Target size={30} className="text-emerald-300" />
             </div>
           </div>
         </div>
 
-        <div className="bg-slate-900/60 backdrop-blur-md p-4 rounded-2xl border border-white/10 max-w-[180px]">
+        <div className="bg-slate-900/60 backdrop-blur-md p-3 rounded-2xl border border-white/10 max-w-[155px]">
           <p className="text-xs font-bold text-white flex items-center gap-1.5">
             You're doing great! 🚀
           </p>

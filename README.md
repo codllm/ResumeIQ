@@ -17,7 +17,7 @@ Each profile is separate. This means one user can prepare for different roles, s
 - Frontend: React, Vite, Tailwind CSS, React Router, Lucide icons
 - Backend: Node.js, Express, TypeScript, Mongoose
 - Database: MongoDB
-- AI: Google Gemini through `@google/genai`
+- AI: Google Gemini through the official `@google/genai` SDK
 - Uploads: Multer and `pdf-parse`
 
 ## Project structure
@@ -55,7 +55,9 @@ Create `BACKEND/.env` from `BACKEND/.env.example` and set the required values:
 PORT=5000
 MONGO_URI=mongodb://localhost:27017/resumeiq
 JWT_SECRET=replace_with_a_long_random_secret
-GOOGLE_GENAI_API_KEY=your_google_gemini_api_key
+GOOGLE_GENAI_API_KEY=your_new_gemini_api_key
+GEMINI_MODEL=gemini-2.5-flash-lite
+GEMINI_TTS_MODEL=gemini-2.5-flash-preview-tts
 SMTP_USER=your_resumeiq_gmail@gmail.com
 SMTP_PASS=your_16_digit_google_app_password
 EMAIL_FROM=ResumeIQ <your_resumeiq_gmail@gmail.com>

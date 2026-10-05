@@ -1,5 +1,9 @@
 import dotenv from 'dotenv';
-dotenv.config();
+import path from 'path';
+
+// Resolve .env from BACKEND/, regardless of whether the server is started from
+// the repository root or from the BACKEND directory.
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 import http from 'http';
 import mongoose from 'mongoose';

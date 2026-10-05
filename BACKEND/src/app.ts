@@ -13,7 +13,7 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Routes (Mounted under both /api/ai and /api/gemini-ai for maximum compatibility)
+// Routes (the legacy /api/gemini-ai alias is retained for frontend compatibility)
 app.use('/api/user', userRouter);
 app.use('/api/ai', aiRouter);
 app.use('/api/gemini-ai', aiRouter);

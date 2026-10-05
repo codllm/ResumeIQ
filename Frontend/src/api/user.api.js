@@ -356,13 +356,17 @@ export async function getassessmentreports(token, profileId, forceRefresh = fals
       throw new Error(data?.message || "Failed to fetch assessment reports");
     }
 
-    const reports = Array.isArray(data.oaReports) ? data.oaReports : [];
+    // Keep this endpoint strictly OA-only. Resume/interview reports have a
+    // different shape and must never be rendered by AssessmentReport.
+    const reports = (Array.isArray(data.oaReports) ? data.oaReports : []).filter(
+      (report) =>
+        Boolean(report?.mocktestId) &&
+        (Array.isArray(report?.questionsReview) || Array.isArray(report?.questions))
+    );
     oaReportsCache.set(cacheKey, reports);
     return reports;
   } catch (error) {
     console.error("Error in getassessmentreports:", error);
-    return [];
+    throw error;
   }
 }
-
-

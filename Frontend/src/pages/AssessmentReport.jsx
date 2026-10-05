@@ -18,10 +18,12 @@ import {
 
 import { getassessmentreports } from '../api/user.api';
 import { useUser } from '../context/user.context';
+import Header from '../components/Header';
+import Sidebar from '../components/Sidebar';
 
 export default function AssessmentReport() {
   const navigate = useNavigate();
-  const { token: contextToken } = useUser();
+  const { token: contextToken, user, logout } = useUser();
   const profileId = localStorage.getItem('active_profile_id');
   const token =
     contextToken ||
@@ -31,6 +33,7 @@ export default function AssessmentReport() {
   const [reports, setReports] = useState([]);
   const [selectedReportIndex, setSelectedReportIndex] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [activeTab, setActiveTab] = useState('review'); // 'review' | 'summary'
   const [filter, setFilter] = useState('All Questions'); // 'All Questions' | 'Correct' | 'Incorrect' | 'Unattempted'
   const [currentPage, setCurrentPage] = useState(1);
@@ -41,9 +44,13 @@ export default function AssessmentReport() {
   useEffect(() => {
     const fetchAssessmentReports = async () => {
       setLoading(true);
+      setLoadError("");
       try {
         let oareports = await getassessmentreports(token, profileId, true);
 
+        // If the selected profile has no linked attempt (for example, an
+        // older attempt was created before profile linking), show all records
+        // from the OA-only endpoint. This still cannot include resume reports.
         if ((!Array.isArray(oareports) || oareports.length === 0) && profileId) {
           oareports = await getassessmentreports(token, "", true);
         }
@@ -56,6 +63,7 @@ export default function AssessmentReport() {
       } catch (err) {
         console.error("Error fetching assessment report:", err);
         setReports([]);
+        setLoadError(err?.message || "Failed to fetch assessment reports.");
       } finally {
         setLoading(false);
       }
@@ -95,13 +103,73 @@ export default function AssessmentReport() {
     }));
   };
 
+  const handleHeaderNav = (tabId) => {
+    if (tabId === 'dashboard') {
+      navigate('/dashboard');
+      return;
+    }
+    if (tabId === 'reports' || tabId === 'settings') {
+      navigate(`/dashboard?tab=${tabId}`);
+      return;
+    }
+    if (tabId === 'oa') {
+      navigate('/online-assessment');
+      return;
+    }
+    if (tabId === 'oareports') {
+      navigate('/oa-reports');
+      return;
+    }
+    if (tabId === 'interview') {
+      navigate('/mock-interview');
+    }
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/landing');
+  };
+
+  const renderLayout = (content) => (
+    <div className="print-dashboard-shell flex min-h-screen w-screen bg-[#F8FAFC] font-sans text-slate-800">
+      <Sidebar
+        activeNav="oareports"
+        setActiveNav={handleHeaderNav}
+        user={user}
+        activeProfile={null}
+        onLogout={handleLogout}
+        navigate={navigate}
+      />
+      <div className="print-dashboard-content flex min-w-0 flex-1 flex-col">
+        <Header
+          user={user}
+          activeNav="oareports"
+          setActiveNav={handleHeaderNav}
+          showBrandOnDesktop
+        />
+        {content}
+      </div>
+    </div>
+  );
+
   const handlePrint = () => {
+    // Give the browser a stable document title for the downloaded PDF, then
+    // restore it after printing so the app title is not changed permanently.
+    const previousTitle = document.title;
+    document.title = `ResumeIQ Assessment Report - ${formattedDate}`;
+
+    const restoreTitle = () => {
+      document.title = previousTitle;
+      window.removeEventListener('afterprint', restoreTitle);
+    };
+
+    window.addEventListener('afterprint', restoreTitle);
     window.print();
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-[#F8FAFC] text-slate-800 p-8 flex items-center justify-center font-sans">
+    return renderLayout(
+      <div className="flex min-h-[calc(100vh-64px)] items-center justify-center p-8">
         <div className="flex items-center gap-3 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
           <div className="w-6 h-6 border-2 border-[#00875A] border-t-transparent rounded-full animate-spin" />
           <span className="text-xs font-bold text-slate-600">Loading Assessment Reports...</span>
@@ -111,15 +179,17 @@ export default function AssessmentReport() {
   }
 
   if (!activeReport || reports.length === 0) {
-    return (
-      <div className="min-h-screen bg-[#F8FAFC] text-slate-800 p-4 md:p-8 font-sans">
+    return renderLayout(
+      <div className="p-4 md:p-8">
         <div className="max-w-md mx-auto bg-white rounded-2xl p-8 border border-slate-200/80 shadow-sm text-center my-16">
           <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-[#00875A] mx-auto flex items-center justify-center mb-4 border border-emerald-100">
             <Code2 size={28} />
           </div>
-          <h2 className="text-xl font-extrabold text-slate-900 mb-2">No Assessment Reports Found</h2>
+          <h2 className="text-xl font-extrabold text-slate-900 mb-2">
+            {loadError ? "Unable to Load Assessment Reports" : "No Assessment Reports Found"}
+          </h2>
           <p className="text-slate-500 text-xs leading-relaxed max-w-sm mx-auto mb-6">
-            You haven't completed any online assessments yet. Take an assessment to test your knowledge, track progress, and view detailed analysis.
+            {loadError || "You haven't completed any online assessments yet. Take an assessment to test your knowledge, track progress, and view detailed analysis."}
           </p>
           <button
             onClick={() => navigate('/mock-test')}
@@ -162,15 +232,15 @@ export default function AssessmentReport() {
     return (
       <div
         key={q._id || globalIndex}
-        className={`bg-white rounded-2xl p-5 border transition-all ${
+        className={`bg-white rounded-2xl p-4 sm:p-5 border transition-all ${
           isForPrint 
             ? 'print-card border-slate-300 mb-4' 
             : 'border-slate-200/80 shadow-sm hover:border-slate-300'
         }`}
       >
         {/* Header: Index, Status Icon, Title, Score */}
-        <div className="flex items-start justify-between gap-4 mb-4">
-          <div className="flex items-start gap-3">
+        <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+          <div className="flex min-w-0 items-start gap-2.5 sm:gap-3">
             <span
               className={`w-7 h-7 rounded-xl font-extrabold text-xs flex items-center justify-center shrink-0 mt-0.5 ${
                 q.isCorrect
@@ -193,8 +263,8 @@ export default function AssessmentReport() {
               )}
             </div>
 
-            <div>
-              <h3 className="text-sm font-bold text-slate-900 leading-snug">
+            <div className="min-w-0">
+              <h3 className="break-words text-sm font-bold leading-snug text-slate-900">
                 {q.question}
               </h3>
               {(q.category || q.topic) && (
@@ -256,11 +326,11 @@ export default function AssessmentReport() {
               return (
                 <div
                   key={optIdx}
-                  className={`p-3 rounded-xl border text-xs flex items-center justify-between transition-all ${optionStyle}`}
+                  className={`flex min-w-0 flex-wrap items-center justify-between gap-2 rounded-xl border p-3 text-xs transition-all ${optionStyle}`}
                 >
                   <span className="flex items-center gap-2">
                     <span className="font-bold text-slate-400">{optionLetter}.</span>
-                    <span>{option}</span>
+                    <span className="break-words">{option}</span>
                   </span>
                   {badgeText && (
                     <span className={`text-[9px] uppercase tracking-wider font-extrabold px-2 py-0.5 rounded-md ${badgeStyle}`}>
@@ -323,9 +393,14 @@ export default function AssessmentReport() {
     );
   };
 
-  return (
-    <div className="min-h-screen bg-[#F8FAFC] text-slate-800 p-4 md:p-8 font-sans">
+  return renderLayout(
+    <div className="p-4 md:p-8">
       <style>{`
+        .print-report,
+        .print-question-list {
+          display: none;
+        }
+
         @media print {
           @page {
             margin: 10mm;
@@ -337,6 +412,14 @@ export default function AssessmentReport() {
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }
+          .print-dashboard-shell,
+          .print-dashboard-content {
+            display: block !important;
+            width: auto !important;
+            height: auto !important;
+            min-height: 0 !important;
+            overflow: visible !important;
+          }
           aside, header, nav, .print\\:hidden, button, select {
             display: none !important;
           }
@@ -345,8 +428,15 @@ export default function AssessmentReport() {
           }
           .print-report {
             display: block !important;
+            visibility: visible !important;
+            position: static !important;
+            height: auto !important;
+            overflow: visible !important;
           }
           .print\\:block {
+            display: block !important;
+          }
+          .print-question-list {
             display: block !important;
           }
           .print-card {
@@ -357,7 +447,7 @@ export default function AssessmentReport() {
         }
       `}</style>
 
-      <div className="print-report hidden">
+      <div className="print-report">
         <div className="mb-6 border-b border-slate-300 pb-4">
           <p className="text-xs font-bold uppercase tracking-wider text-[#00875A]">
             ResumeIQ Online Assessment
@@ -425,17 +515,17 @@ export default function AssessmentReport() {
       <div className="screen-report max-w-6xl mx-auto space-y-6">
 
         {/* Top Navigation Row */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-200/80">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-col gap-3 border-b border-slate-200/80 pb-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+          <div className="flex min-w-0 items-start gap-2.5 sm:items-center sm:gap-3">
             <button
               onClick={() => navigate(-1)}
-              className="p-2 bg-white hover:bg-slate-100 border border-slate-200/80 rounded-xl text-slate-600 transition cursor-pointer print:hidden"
+              className="mt-0.5 shrink-0 rounded-xl border border-slate-200/80 bg-white p-2 text-slate-600 transition hover:bg-slate-100 cursor-pointer print:hidden sm:mt-0"
             >
               <ArrowLeft size={18} />
             </button>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Assessment Report</h1>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-xl font-extrabold tracking-tight text-slate-900 sm:text-2xl">Assessment Report</h1>
                 {reports.length > 1 && (
                   <div className="relative print:hidden">
                     <select
@@ -453,7 +543,7 @@ export default function AssessmentReport() {
                   </div>
                 )}
               </div>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p className="mt-0.5 text-[11px] text-slate-500 sm:text-xs">
                 Submitted on {formattedDate} • Duration: {duration} min
               </p>
             </div>
@@ -461,7 +551,7 @@ export default function AssessmentReport() {
 
           <button
             onClick={handlePrint}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-white border border-slate-200/80 text-slate-700 hover:bg-slate-50 font-semibold rounded-xl text-xs shadow-sm transition cursor-pointer print:hidden"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200/80 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 cursor-pointer print:hidden sm:w-auto sm:py-2"
           >
             <Download size={15} />
             Download Full PDF
@@ -469,10 +559,10 @@ export default function AssessmentReport() {
         </div>
 
         {/* Metrics Dashboard Row */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-5">
           
           {/* Main Score Card */}
-          <div className="bg-white p-5 rounded-2xl border border-emerald-200/80 ring-1 ring-emerald-500/10 shadow-sm flex flex-col items-center justify-center text-center relative overflow-hidden">
+          <div className="relative col-span-2 flex flex-col items-center justify-center overflow-hidden rounded-2xl border border-emerald-200/80 bg-white p-4 text-center shadow-sm ring-1 ring-emerald-500/10 sm:p-5 md:col-span-1">
             <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-2">
               Overall Score
             </span>
@@ -503,7 +593,7 @@ export default function AssessmentReport() {
           </div>
 
           {/* Correct Answers */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between">
+          <div className="flex min-w-0 flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-3 shadow-sm sm:p-5">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Correct</span>
               <div className="p-1.5 bg-emerald-50 text-[#00875A] rounded-lg">
@@ -511,7 +601,7 @@ export default function AssessmentReport() {
               </div>
             </div>
             <div className="my-3">
-              <div className="text-3xl font-extrabold text-slate-900">{correctCount}</div>
+              <div className="text-2xl font-extrabold text-slate-900 sm:text-3xl">{correctCount}</div>
               <p className="text-xs font-semibold text-emerald-600 mt-0.5">
                 {totalQuestions > 0 ? Math.round((correctCount / totalQuestions) * 100) : 0}% Accuracy
               </p>
@@ -525,7 +615,7 @@ export default function AssessmentReport() {
           </div>
 
           {/* Incorrect Answers */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between">
+          <div className="flex min-w-0 flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-3 shadow-sm sm:p-5">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Incorrect</span>
               <div className="p-1.5 bg-rose-50 text-rose-600 rounded-lg">
@@ -533,7 +623,7 @@ export default function AssessmentReport() {
               </div>
             </div>
             <div className="my-3">
-              <div className="text-3xl font-extrabold text-slate-900">{incorrectCount}</div>
+              <div className="text-2xl font-extrabold text-slate-900 sm:text-3xl">{incorrectCount}</div>
               <p className="text-xs font-semibold text-rose-500 mt-0.5">
                 {totalQuestions > 0 ? Math.round((incorrectCount / totalQuestions) * 100) : 0}% Errors
               </p>
@@ -547,7 +637,7 @@ export default function AssessmentReport() {
           </div>
 
           {/* Total Questions */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between">
+          <div className="flex min-w-0 flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-3 shadow-sm sm:p-5">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Questions</span>
               <div className="p-1.5 bg-slate-100 text-slate-600 rounded-lg">
@@ -555,7 +645,7 @@ export default function AssessmentReport() {
               </div>
             </div>
             <div className="my-3">
-              <div className="text-3xl font-extrabold text-slate-900">{totalQuestions}</div>
+              <div className="text-2xl font-extrabold text-slate-900 sm:text-3xl">{totalQuestions}</div>
               <p className="text-xs font-semibold text-slate-500 mt-0.5">
                 {unattemptedCount > 0 ? `${unattemptedCount} Unattempted` : 'All Attempted'}
               </p>
@@ -566,7 +656,7 @@ export default function AssessmentReport() {
           </div>
 
           {/* Duration */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between">
+          <div className="flex min-w-0 flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-3 shadow-sm sm:p-5">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Duration</span>
               <div className="p-1.5 bg-[#00875A]/10 text-[#00875A] rounded-lg">
@@ -574,7 +664,7 @@ export default function AssessmentReport() {
               </div>
             </div>
             <div className="my-3">
-              <div className="text-2xl font-extrabold text-slate-900">{duration} min</div>
+              <div className="text-xl font-extrabold text-slate-900 sm:text-2xl">{duration} min</div>
               <p className="text-xs font-semibold text-slate-400 mt-0.5">Allocated Time</p>
             </div>
             <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
@@ -585,8 +675,8 @@ export default function AssessmentReport() {
         </div>
 
         {/* Tab & Filter Controls */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-200/80 gap-4 pt-2 print:hidden">
-          <div className="flex gap-6">
+        <div className="flex flex-col gap-3 border-b border-slate-200/80 pt-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4 print:hidden">
+          <div className="flex gap-5 overflow-x-auto">
             <button
               onClick={() => setActiveTab('review')}
               className={`pb-3 text-xs font-bold transition cursor-pointer border-b-2 ${
@@ -610,12 +700,12 @@ export default function AssessmentReport() {
           </div>
 
           {activeTab === 'review' && (
-            <div className="mb-2">
+              <div className="mb-2 w-full sm:w-auto">
               <div className="relative">
                 <select
                   value={filter}
                   onChange={(e) => setFilter(e.target.value)}
-                  className="appearance-none bg-white border border-slate-200/80 rounded-xl px-3.5 py-1.5 pr-8 text-xs font-semibold text-slate-700 shadow-sm focus:outline-none cursor-pointer"
+                  className="w-full appearance-none rounded-xl border border-slate-200/80 bg-white px-3.5 py-2 pr-8 text-xs font-semibold text-slate-700 shadow-sm focus:outline-none cursor-pointer sm:w-auto sm:py-1.5"
                 >
                   <option value="All Questions">All Questions ({questions.length})</option>
                   <option value="Correct">Correct ({correctCount})</option>
@@ -632,7 +722,7 @@ export default function AssessmentReport() {
         {activeTab === 'review' ? (
           <>
             {/* Status Legend */}
-            <div className="flex items-center gap-4 text-xs font-semibold text-slate-500 print:hidden">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-semibold text-slate-500 print:hidden">
               <div className="flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-[#00875A]"></span>
                 <span>Correct</span>
@@ -663,7 +753,7 @@ export default function AssessmentReport() {
             </div>
 
             {/* Questions List (Print Export - All Questions) */}
-            <div className="hidden print:block space-y-4">
+            <div className="print-question-list space-y-4">
               {questions.map((q, idx) =>
                 renderQuestionCard(q, idx + 1, true)
               )}
@@ -698,7 +788,7 @@ export default function AssessmentReport() {
           </>
         ) : (
           /* Summary Tab View */
-          <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-sm space-y-4">
+          <div className="space-y-4 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm sm:p-6">
             <div>
               <h3 className="text-base font-bold text-slate-900">Assessment Breakdown</h3>
               <p className="text-xs text-slate-500 mt-0.5">
@@ -710,14 +800,14 @@ export default function AssessmentReport() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
                 {activeReport.sections.map((section, sIdx) => (
                   <div key={sIdx} className="p-4 rounded-xl border border-slate-200/80 bg-slate-50/50 space-y-2">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
                       <span className="font-bold text-xs text-slate-800">{section.category}</span>
                       <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-50 text-[#00875A] rounded-md capitalize border border-emerald-100">
                         {section.difficulty || 'Mixed'}
                       </span>
                     </div>
                     <p className="text-xs text-slate-500 leading-relaxed">{section.reason}</p>
-                    <div className="flex items-center justify-between text-xs text-slate-600 font-semibold pt-2 border-t border-slate-200/60">
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200/60 pt-2 text-xs font-semibold text-slate-600">
                       <span>Questions: {section.questionCount}</span>
                       <span>Allocated: {section.durationMinutes} min</span>
                     </div>
